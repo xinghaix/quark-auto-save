@@ -10,6 +10,14 @@
 
 定期执行本脚本自动转存、文件名整理，配合 [SmartStrm](https://github.com/Cp0204/SmartStrm) / [OpenList](https://github.com/OpenListTeam/OpenList) , Emby 可达到自动追更的效果。🥳
 
+> **本仓库说明（xinghaix fork）**
+>
+> 基于上游 [Cp0204/quark-auto-save](https://github.com/Cp0204/quark-auto-save) 的 `main` 二次优化，协议仍为 AGPL-3.0。
+> WebUI：现代化卡片布局、浅色/深色/海洋/日落四套主题、中英界面（保存在浏览器本地）。转存/签到/插件逻辑与上游一致。
+> 主题与语言不写入服务器配置；Cookie、推送密钥等仍只存在你自己的 `config` 目录。
+> 要用本 fork 的界面，请从此仓库自行构建镜像；`cp0204/quark-auto-save` 官方镜像仍是上游 UI。
+
+
 
 [![zread](https://img.shields.io/badge/Ask_AI-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/Cp0204/quark-auto-save) [![skill](https://img.shields.io/badge/🦞-ClawHub%20Skill-orange?logo=openclaw)](https://clawhub.ai/Cp0204/quark-auto-save)
 
@@ -38,6 +46,7 @@
 - 部署方式
   - [x] 可能~~兼容青龙~~
   - [x] Docker 部署，WebUI 配置
+  - [x] 现代化 WebUI：多主题、中/英界面、更清晰的设置分组
 
 - 分享链接
   - [x] 支持分享链接的子目录
