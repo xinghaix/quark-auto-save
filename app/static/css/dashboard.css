@@ -198,7 +198,7 @@ table.jsoneditor-tree>tbody>tr.jsoneditor-expandable:first-child {
 }
 
 /* Toast */
-.toast-container {
+.qas-toasts {
   position: fixed;
   top: 80px;
   right: 20px;

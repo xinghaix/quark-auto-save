@@ -230,13 +230,13 @@ main.qas-main {
 html[data-theme="dark"] .qas-badge.warn { background: #3a2a12; color: #fdb022; }
 html[data-theme="dark"] .qas-badge.ok { background: #163427; color: #32d583; }
 
-.form-control, .form-control:disabled, .custom-select, select.form-control {
+.form-control, .form-control:disabled, .form-select, .custom-select, select.form-control {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 10px;
 }
-.form-control:focus {
+.form-control:focus, .form-select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
   background: var(--input-bg);
@@ -248,11 +248,7 @@ html[data-theme="dark"] .qas-badge.ok { background: #163427; color: #32d583; }
   border: 1px solid var(--line);
 }
 .input-group > .form-control { border-radius: 10px; }
-.input-group-prepend .input-group-text,
-.input-group-append .btn,
-.input-group-append .input-group-text {
-  border-color: var(--line);
-}
+
 
 .btn { border-radius: 10px; font-weight: 560; }
 .btn-primary { background: var(--primary); border-color: var(--primary); }
@@ -266,7 +262,7 @@ html[data-theme="dark"] .qas-badge.ok { background: #163427; color: #32d583; }
 .btn-warning { background: var(--warning); border-color: var(--warning); color: #fff; }
 .btn-info { background: var(--info); border-color: var(--info); }
 .btn-secondary { background: var(--muted); border-color: var(--muted); }
-.btn-block.text-left { color: var(--text); }
+.btn.w-100.text-start { color: var(--text); }
 
 .task.qas-task {
   background: var(--surface);
@@ -306,7 +302,8 @@ html[data-theme="dark"] .qas-badge.ok { background: #163427; color: #32d583; }
 .modal-header, .modal-footer {
   border-color: var(--line);
 }
-.close { color: var(--text); text-shadow: none; opacity: 0.7; }
+.btn-close { opacity: 0.7; }
+html[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1); }
 .breadcrumb {
   background: var(--surface-2);
   border-radius: 10px;
@@ -319,7 +316,7 @@ html[data-theme="dark"] .qas-badge.ok { background: #163427; color: #32d583; }
   color: var(--text);
 }
 
-.toast-container { top: 72px; }
+.qas-toasts { top: 72px; }
 .toast {
   background: var(--surface);
   color: var(--text);

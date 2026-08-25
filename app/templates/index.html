@@ -7,13 +7,13 @@
   <title>夸克自动转存</title>
   <link rel="stylesheet" href="./static/css/bootstrap.min.css">
   <link rel="stylesheet" href="./static/css/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="./static/css/jsoneditor.min.css">
   <link rel="stylesheet" href="./static/css/dashboard.css">
   <link rel="stylesheet" href="./static/css/theme.css">
-  <script src="./static/js/jquery-3.5.1.slim.min.js"></script>
+  <script src="./static/js/vue.global.prod.js"></script>
   <script src="./static/js/bootstrap.bundle.min.js"></script>
-  <script src="./static/js/vue@2.js"></script>
   <script src="./static/js/axios.min.js"></script>
-  <script src="./static/js/v-jsoneditor.min.js"></script>
+  <script src="./static/js/jsoneditor.min.js"></script>
   <script src="./static/js/i18n.js"></script>
   <script>
     (function () {
@@ -29,8 +29,8 @@
   <div id="app">
 
     <nav class="navbar navbar-dark sticky-top qas-navbar flex-md-nowrap p-0">
-      <a class="navbar-brand col-md-3 col-lg-2 mr-0 px-3" href="#"><i class="bi bi-clouds"></i> {{ t('appName') }}</a>
-      <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-toggle="collapse" data-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false">
+      <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#"><i class="bi bi-clouds"></i> {{ t('appName') }}</a>
+      <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false">
         <span class="navbar-toggler-icon"></span>
       </button>
     </nav>
@@ -58,21 +58,21 @@
           </ul>
           <div class="nav-bottom text-center">
             <p class="position-relative" hidden>
-              <b class="text-success"><i class="bi bi-record-circle mr-1"></i>视频教程</b>
+              <b class="text-success"><i class="bi bi-record-circle me-1"></i>视频教程</b>
               <span class="position-absolute qrcode-tutorial">
                 使用夸克扫码查看<br>
                 <img src="./static/img/qrcode_tutorial.png">
               </span>
             </p>
-            <p><a target="_blank" href="https://github.com/Cp0204/quark-auto-save/wiki"><i class="bi bi-book mr-1"></i>{{ t('wiki') }}</a></p>
-            <p><a href="./static/js/qas.addtask.user.js"><i class="bi bi-cloud-plus-fill mr-1"></i>{{ t('userscript') }}</a></p>
-            <p><a target="_blank" href="https://github.com/xinghaix/quark-auto-save"><i class="bi bi-github mr-1"></i>{{ t('github') }}</a></p>
+            <p><a target="_blank" href="https://github.com/Cp0204/quark-auto-save/wiki"><i class="bi bi-book me-1"></i>{{ t('wiki') }}</a></p>
+            <p><a href="./static/js/qas.addtask.user.js"><i class="bi bi-cloud-plus-fill me-1"></i>{{ t('userscript') }}</a></p>
+            <p><a target="_blank" href="https://github.com/xinghaix/quark-auto-save"><i class="bi bi-github me-1"></i>{{ t('github') }}</a></p>
             <p><span v-html="versionTips"></span></p>
           </div>
         </div>
       </nav>
 
-      <main class="col-md-9 col-lg-10 ml-sm-auto qas-main">
+      <main class="col-md-9 col-lg-10 ms-sm-auto qas-main">
         <form @submit.prevent="saveConfig" @keydown.enter.prevent>
 
           <div v-if="activeTab === 'config'">
@@ -114,15 +114,15 @@
                 <br>{{ t('cookieHelp2') }}
               </p>
               <div v-for="(value, index) in formData.cookie" :key="'ck'+index" class="input-group mb-2">
-                <div class="input-group-prepend">
+
                   <span class="input-group-text">{{ t('cookieAccount', {n: index+1}) }}
-                    <span class="qas-badge ml-2" :class="index===0 ? 'ok' : ''">{{ index===0 ? t('cookiePrimary') : t('cookieSign') }}</span>
+                    <span class="qas-badge ms-2" :class="index===0 ? 'ok' : ''">{{ index===0 ? t('cookiePrimary') : t('cookieSign') }}</span>
                   </span>
-                </div>
+
                 <input type="text" v-model="formData.cookie[index]" class="form-control" :placeholder="t('cookiePlaceholder')">
-                <div class="input-group-append">
+
                   <button type="button" class="btn btn-outline-danger" @click="removeCookie(index)">{{ t('remove') }}</button>
-                </div>
+
               </div>
             </div>
 
@@ -139,7 +139,7 @@
                 <button type="button" class="qas-chip" :class="{active: formData.crontab==='0 8 * * 1-5'}" @click="formData.crontab='0 8 * * 1-5'">{{ t('crontabPresetWeekday') }}</button>
               </div>
               <div class="input-group">
-                <div class="input-group-prepend"><span class="input-group-text">Crontab</span></div>
+                <span class="input-group-text">Crontab</span>
                 <input type="text" v-model="formData.crontab" class="form-control" :placeholder="t('crontabPlaceholder')">
               </div>
             </div>
@@ -153,24 +153,24 @@
               </div>
               <p class="qas-help">{{ t('notifyHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/通知推送服务配置" target="_blank">{{ t('notifyWiki') }}</a></p>
               <div class="input-group mb-3">
-                <select class="form-control" v-model="newPushKey">
+                <select class="form-select" v-model="newPushKey">
                   <option value="">{{ t('notifyChannel') }}</option>
                   <option v-for="k in pushChannelOptions" :key="k" :value="k">{{ k }}</option>
                   <option value="__custom__">{{ t('notifyCustom') }}</option>
                 </select>
-                <div class="input-group-append">
+
                   <button type="button" class="btn btn-outline-primary" @click="addPush()">{{ t('add') }}</button>
-                </div>
+
               </div>
               <div v-for="(value, key) in formData.push_config" :key="key" class="input-group mb-2">
-                <div class="input-group-prepend"><span class="input-group-text">{{ key }}</span></div>
-                <div class="input-group-prepend" v-if="(key == 'DEER_KEY' || key == 'PUSH_KEY')">
+                <span class="input-group-text">{{ key }}</span>
+                <template v-if="(key == 'DEER_KEY' || key == 'PUSH_KEY')">
                   <a type="button" class="btn btn-warning" target="_blank" href="https://sct.ftqq.com/r/13249" title="Server酱推荐计划"><i class="bi bi-award"></i></a>
-                </div>
+                </template>
                 <input type="text" v-model="formData.push_config[key]" class="form-control">
-                <div class="input-group-append">
+
                   <button type="button" class="btn btn-outline-danger" @click="removePush(key)">{{ t('remove') }}</button>
-                </div>
+
               </div>
             </div>
 
@@ -181,25 +181,25 @@
               </div>
               <p class="qas-help">{{ t('pluginsHelp') }}</p>
               <div v-for="(plugin, pluginName) in getAvailablePlugins(formData.plugins)" :key="pluginName">
-                <div class="form-group row mb-0" style="display:flex; align-items:center;">
-                  <div data-toggle="collapse" :data-target="'#collapse_'+pluginName" aria-expanded="true" :aria-controls="'collapse_'+pluginName">
-                    <div class="btn btn-block text-left">
+                <div class="row mb-0" style="display:flex; align-items:center;">
+                  <div data-bs-toggle="collapse" :data-bs-target="'#collapse_'+pluginName" aria-expanded="true" :aria-controls="'collapse_'+pluginName">
+                    <div class="btn w-100 text-start">
                       <i class="bi bi-caret-right-fill"></i> <span>{{ pluginName }}</span>
                     </div>
                   </div>
                 </div>
-                <div class="collapse ml-3 mt-2" :id="'collapse_'+pluginName">
+                <div class="collapse ms-3 mt-2" :id="'collapse_'+pluginName">
                   <template v-for="(value, key) in plugin">
                     <div v-if="key.startsWith('tips_')" :key="pluginName+key">
                       <div class="alert alert-warning" role="alert">{{ value }}</div>
                     </div>
-                    <div v-else-if="typeof value === 'boolean'" class="form-group row mb-2" :key="pluginName+key">
+                    <div v-else-if="typeof value === 'boolean'" class="row mb-2" :key="pluginName+key">
                       <label class="col-sm-2 col-form-label">{{ key }}</label>
                       <div class="col-sm-10 d-flex align-items-center">
-                        <input type="checkbox" class="form-check-input ml-0 mt-0" v-model="formData.plugins[pluginName][key]">
+                        <input type="checkbox" class="form-check-input ms-0 mt-0" v-model="formData.plugins[pluginName][key]">
                       </div>
                     </div>
-                    <div v-else class="form-group row" :key="pluginName+key">
+                    <div v-else class="row mb-3" :key="pluginName+key">
                       <label class="col-sm-2 col-form-label">{{ key }}</label>
                       <div class="col-sm-10">
                         <input :type="key.includes('password') || key.includes('token') || key.includes('secret') ? 'password' : 'text'" v-model="formData.plugins[pluginName][key]" class="form-control">
@@ -216,16 +216,16 @@
                 <button type="button" class="btn btn-outline-primary btn-sm" @click="addMagicRegex()">{{ t('add') }}</button>
               </div>
               <p class="qas-help">{{ t('magicHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/正则处理教程#21-魔法匹配" target="_blank">{{ t('magicWiki') }}</a></p>
-              <div v-for="(value, key) in formData.magic_regex" :key="key" class="form-group mb-2">
+              <div v-for="(value, key) in formData.magic_regex" :key="key" class="mb-2">
                 <div class="input-group">
-                  <div class="input-group-prepend"><span class="input-group-text">{{ t('magicName') }}</span></div>
+                  <span class="input-group-text">{{ t('magicName') }}</span>
                   <input type="text" :data-oldkey="key" v-model="key" class="form-control" @change="updateMagicRegexKey($event.target.dataset.oldkey, $event.target.value)" :placeholder="t('magicName')">
-                  <div class="input-group-prepend"><span class="input-group-text">{{ t('regexPreview') }}</span></div>
+                  <span class="input-group-text">{{ t('regexPreview') }}</span>
                   <input type="text" v-model="value.pattern" class="form-control" :placeholder="t('magicPattern')">
                   <input type="text" v-model="value.replace" class="form-control" :placeholder="t('magicReplace')">
-                  <div class="input-group-append">
+
                     <button type="button" class="btn btn-outline-danger" @click="removeMagicRegex(key)">{{ t('remove') }}</button>
-                  </div>
+
                 </div>
               </div>
             </div>
@@ -237,7 +237,7 @@
               </div>
               <p class="qas-help">{{ t('apiHelp') }}</p>
               <div class="input-group">
-                <div class="input-group-prepend"><span class="input-group-text">Token</span></div>
+                <span class="input-group-text">Token</span>
                 <input type="text" v-model="formData.api_token" class="form-control" style="background-color:var(--input-bg);" disabled>
               </div>
             </div>
@@ -247,62 +247,62 @@
                 <h2><i class="bi bi-search"></i> {{ t('search') }}</h2>
               </div>
               <p class="qas-help">{{ t('searchHelp') }}</p>
-              <div class="form-group row mb-0" style="display:flex; align-items:center;">
-                <div data-toggle="collapse" data-target="#collapse_cloudsaver" aria-expanded="true" aria-controls="collapse_cloudsaver">
-                  <div class="btn btn-block text-left">
+              <div class="row mb-0" style="display:flex; align-items:center;">
+                <div data-bs-toggle="collapse" data-bs-target="#collapse_cloudsaver" aria-expanded="true" aria-controls="collapse_cloudsaver">
+                  <div class="btn w-100 text-start">
                     <i class="bi bi-caret-right-fill"></i> CloudSaver
-                    <span class="badge badge-pill badge-light">
+                    <span class="badge rounded-pill text-bg-light">
                       <a href="https://github.com/Cp0204/quark-auto-save/wiki/CloudSaver搜索源" target="_blank">?</a>
                     </span>
-                    <div class="text-muted small mt-1 ml-3">{{ t('cloudsaverHelp') }}</div>
+                    <div class="text-muted small mt-1 ms-3">{{ t('cloudsaverHelp') }}</div>
                   </div>
                 </div>
               </div>
-              <div class="collapse show ml-3" id="collapse_cloudsaver">
-                <div class="form-group row">
+              <div class="collapse show ms-3" id="collapse_cloudsaver">
+                <div class="row mb-3">
                   <label class="col-sm-2 col-form-label">{{ t('enable') }}</label>
                   <div class="col-sm-10 d-flex align-items-center">
                     <input type="checkbox" v-model="formData.source.cloudsaver.enable">
                   </div>
                 </div>
-                <div class="form-group row">
+                <div class="row mb-3">
                   <label class="col-sm-2 col-form-label">{{ t('server') }}</label>
                   <div class="col-sm-10">
                     <input type="text" v-model="formData.source.cloudsaver.server" class="form-control" :placeholder="t('serverCsPlaceholder')">
                   </div>
                 </div>
-                <div class="form-group row">
+                <div class="row mb-3">
                   <label class="col-sm-2 col-form-label">{{ t('username') }}</label>
                   <div class="col-sm-10">
                     <input type="text" v-model="formData.source.cloudsaver.username" class="form-control" :placeholder="t('username')">
                   </div>
                 </div>
-                <div class="form-group row">
+                <div class="row mb-3">
                   <label class="col-sm-2 col-form-label">{{ t('password') }}</label>
                   <div class="col-sm-10">
                     <input type="password" v-model="formData.source.cloudsaver.password" class="form-control" :placeholder="t('password')">
                   </div>
                 </div>
               </div>
-              <div class="form-group row mb-0" style="display:flex; align-items:center;">
-                <div data-toggle="collapse" data-target="#collapse_pansou" aria-expanded="true" aria-controls="collapse_pansou">
-                  <div class="btn btn-block text-left">
+              <div class="row mb-0" style="display:flex; align-items:center;">
+                <div data-bs-toggle="collapse" data-bs-target="#collapse_pansou" aria-expanded="true" aria-controls="collapse_pansou">
+                  <div class="btn w-100 text-start">
                     <i class="bi bi-caret-right-fill"></i> PanSou
-                    <span class="badge badge-pill badge-light">
+                    <span class="badge rounded-pill text-bg-light">
                       <a href="https://github.com/fish2018/pansou" target="_blank">?</a>
                     </span>
-                    <div class="text-muted small mt-1 ml-3">{{ t('pansouHelp') }}</div>
+                    <div class="text-muted small mt-1 ms-3">{{ t('pansouHelp') }}</div>
                   </div>
                 </div>
               </div>
-              <div class="collapse show ml-3" id="collapse_pansou">
-                <div class="form-group row">
+              <div class="collapse show ms-3" id="collapse_pansou">
+                <div class="row mb-3">
                   <label class="col-sm-2 col-form-label">{{ t('enable') }}</label>
                   <div class="col-sm-10 d-flex align-items-center">
                     <input type="checkbox" v-model="formData.source.pansou.enable">
                   </div>
                 </div>
-                <div class="form-group row">
+                <div class="row mb-3">
                   <label class="col-sm-2 col-form-label">{{ t('server') }}</label>
                   <div class="col-sm-10">
                     <input type="text" v-model="formData.source.pansou.server" class="form-control" :placeholder="t('serverPsPlaceholder')">
@@ -321,21 +321,21 @@
                   <label class="col-form-label">{{ t('filterName') }}</label>
                   <div class="input-group">
                     <input type="text" class="form-control" v-model="taskNameFilter" :placeholder="t('filterNamePh')">
-                    <div class="input-group-append">
+
                       <button type="button" class="btn btn-outline-secondary" @click="clearData('taskNameFilter')"><i class="bi bi-x-lg"></i></button>
-                    </div>
+
                   </div>
                 </div>
                 <div class="col-lg-6 col-md-12 mb-2">
                   <label class="col-form-label">{{ t('filterPath') }}</label>
                   <div class="input-group">
-                    <select class="form-control" v-model="taskDirSelected">
+                    <select class="form-select" v-model="taskDirSelected">
                       <option value="">{{ t('allPaths') }}</option>
-                      <option v-for="(dir, index) in taskDirs" v-if="dir" :key="'dir'+index" :value="dir">{{ dir }}</option>
+                      <option v-for="(dir, index) in taskDirOptions" :key="'dir'+index" :value="dir">{{ dir }}</option>
                     </select>
-                    <div class="input-group-append">
+
                       <button type="button" class="btn btn-outline-secondary" @click="clearData('taskDirSelected')"><i class="bi bi-x-lg"></i></button>
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -343,11 +343,11 @@
 
             <div v-for="(task, index) in formData.tasklist" :key="'task'+index" class="task qas-task mb-3">
               <template v-if="(taskDirSelected == '' || getParentDirectory(task.savepath) == taskDirSelected) && task.taskname.includes(taskNameFilter)">
-                <div class="form-group row mb-0" style="align-items:center">
-                  <div class="col pl-0" data-toggle="collapse" :data-target="'#collapse_'+index" aria-expanded="true" :aria-controls="'collapse_'+index">
-                    <div class="btn btn-block text-left">
+                <div class="row mb-0" style="align-items:center">
+                  <div class="col ps-0" data-bs-toggle="collapse" :data-bs-target="'#collapse_'+index" aria-expanded="true" :aria-controls="'collapse_'+index">
+                    <div class="btn w-100 text-start">
                       <i class="bi bi-caret-right-fill"></i> #<span>{{ index+1 }}: {{ task.taskname }}</span>
-                      <span class="qas-badge warn ml-2" v-if="task.shareurl_ban">{{ t('banned') }}</span>
+                      <span class="qas-badge warn ms-2" v-if="task.shareurl_ban">{{ t('banned') }}</span>
                     </div>
                   </div>
                   <div class="col-auto">
@@ -357,16 +357,16 @@
                     <button type="button" class="btn btn-outline-danger btn-sm" @click="removeTask(index)" :title="t('deleteTask')"><i class="bi bi-trash3-fill"></i></button>
                   </div>
                 </div>
-                <div class="collapse ml-3" :id="'collapse_'+index">
+                <div class="collapse ms-3" :id="'collapse_'+index">
                   <div class="alert alert-warning" role="alert" v-if="task.shareurl_ban">{{ task.shareurl_ban }}</div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('taskName') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" name="taskname[]" class="form-control" v-model="task.taskname" :placeholder="t('required')" @focus="smart_param.showSuggestions=true;focusTaskname(index, task)" @input="changeTaskname(index, task)">
                         <div class="dropdown-menu show task-suggestions" v-if="smart_param.showSuggestions && smart_param.taskSuggestions.success && smart_param.index === index">
                           <div class="dropdown-item text-muted text-center" style="font-size:12px;">
-                            <span v-if="smart_param.isVerifying" class="mr-1"><i class="spinner-border spinner-border-sm" role="status"></i> {{ t('verifying') }}</span>
+                            <span v-if="smart_param.isVerifying" class="me-1"><i class="spinner-border spinner-border-sm" role="status"></i> {{ t('verifying') }}</span>
                             <span v-else>{{ smart_param.taskSuggestions.message ? smart_param.taskSuggestions.message : smart_param.taskSuggestions.data.length ? t('searchHint') : t('noResult') }}</span>
                           </div>
                           <div v-for="(suggestion, sIndex) in smart_param.taskSuggestions.data" :key="suggestion.shareurl" class="dropdown-item cursor-pointer" @click.prevent="selectSuggestion(index, suggestion)" style="font-size: 12px;" :title="suggestion.content">
@@ -379,7 +379,7 @@
                             <span v-if="suggestion.datetime" class="badge bg-transparent border border-dark text-dark">{{ suggestion.datetime }}</span>
                           </div>
                         </div>
-                        <div class="input-group-append" :title="t('deepSearch')">
+                        <template :title="t('deepSearch')">
                           <button class="btn btn-primary" type="button" @click="searchSuggestions(index, task.taskname)">
                             <i v-if="smart_param.isSearching && smart_param.index === index" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>
                             <i v-else class="bi bi-search-heart"></i>
@@ -387,51 +387,51 @@
                           <div class="input-group-text" :title="t('googleSearch')">
                             <a target="_blank" :href="`https://www.google.com/search?q=%22pan.quark.cn/s%22+${task.taskname}`"><i class="bi bi-google"></i></a>
                           </div>
-                        </div>
+                        </template>
                       </div>
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('shareUrl') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" name="shareurl[]" class="form-control" v-model="task.shareurl" :placeholder="t('required')" @blur="changeShareurl(task)">
-                        <div class="input-group-append" v-if="task.shareurl">
+                        <template v-if="task.shareurl">
                           <button type="button" class="btn btn-outline-secondary" @click="fileSelect.selectDir=true;fileSelect.switchShare=false;fileSelect.previewRegex=false;fileSelect.sortBy='file_name';fileSelect.sortOrder='desc';showShareSelect(index)" :title="t('selectFolder')"><i class="bi bi-folder"></i></button>
                           <div class="input-group-text">
                             <a target="_blank" :href="task.shareurl" :title="t('openLink')"><i class="bi bi-box-arrow-up-right"></i></a>
                           </div>
-                        </div>
+                        </template>
                       </div>
                       <small class="text-muted">{{ t('helpShare') }}</small>
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('savePath') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" name="savepath[]" class="form-control" v-model="task.savepath" :placeholder="t('required')" @focus="focusTaskname(index, task)">
-                        <div class="input-group-append">
+
                           <button class="btn btn-secondary" type="button" v-if="smart_param.savepath && smart_param.index == index && task.savepath != smart_param.origin_savepath" @click="task.savepath = smart_param.origin_savepath"><i class="bi bi-reply"></i></button>
                           <button class="btn btn-outline-secondary" type="button" @click="fileSelect.sortBy='file_name';fileSelect.sortOrder='asc';showSavepathSelect(index)">{{ t('select') }}</button>
-                        </div>
+
                       </div>
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('saveRule') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
-                        <div class="input-group-prepend">
+
                           <button class="btn btn-outline-secondary" type="button" @click="fileSelect.selectDir=true;fileSelect.switchShare=false;fileSelect.previewRegex=true;fileSelect.sortBy='file_name';fileSelect.sortOrder='asc';showShareSelect(index)" :title="t('regexPreview')">{{ t('regexPreview') }}</button>
-                        </div>
+
                         <input type="text" name="pattern[]" class="form-control" v-model="task.pattern" :placeholder="t('magicPattern')" list="magicRegex" @dblclick="inputRawMagicRegex(task)">
                         <input type="text" name="replace[]" class="form-control" v-model="task.replace" :placeholder="t('magicReplace')">
-                        <div class="input-group-append" :title="t('helpPattern')">
+                        <template :title="t('helpPattern')">
                           <div class="input-group-text">
                             <input type="checkbox" v-model="task.ignore_extension">&nbsp;{{ t('ignoreExt') }}
                           </div>
-                        </div>
+                        </template>
                       </div>
                       <small class="text-muted">{{ t('helpPattern') }}</small>
                       <datalist id="magicRegex">
@@ -439,39 +439,39 @@
                       </datalist>
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('startFile') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" class="form-control" :placeholder="t('optional')" name="startfid[]" v-model="task.startfid">
-                        <div class="input-group-append" v-if="task.shareurl">
+                        <template v-if="task.shareurl">
                           <button class="btn btn-outline-secondary" type="button" @click="fileSelect.selectDir=false;fileSelect.switchShare=false;fileSelect.previewRegex=false;fileSelect.sortBy='updated_at';fileSelect.sortOrder='desc';showShareSelect(index)">{{ t('select') }}</button>
-                        </div>
+                        </template>
                       </div>
                       <small class="text-muted">{{ t('helpStartfid') }}</small>
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('updateDir') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" name="update_subdir[]" class="form-control" v-model="task.update_subdir" placeholder="4k|1080p">
-                        <div class="input-group-append" :title="t('helpResave')">
+                        <template :title="t('helpResave')">
                           <div class="input-group-text">
                             <input type="checkbox" v-model="task.update_subdir_resave_mode">&nbsp;{{ t('resaveMode') }}
                           </div>
-                        </div>
+                        </template>
                       </div>
                       <small class="text-muted">{{ t('helpSubdir') }}</small>
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('endDate') }}</label>
                     <div class="col-sm-10">
                       <input type="date" name="enddate[]" class="form-control" v-model="task.enddate" :placeholder="t('optional')">
                     </div>
                   </div>
-                  <div class="form-group row">
+                  <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">{{ t('runWeek') }}</label>
                     <div class="col-sm-10 col-form-label">
                       <div class="form-check form-check-inline" :title="t('helpWeek')">
@@ -485,7 +485,7 @@
                       <div><small class="text-muted">{{ t('helpWeek') }}</small></div>
                     </div>
                   </div>
-                  <div class="form-group row" v-if="Object.keys(getAvailablePlugins(formData.plugins)).length">
+                  <div class="row mb-3" v-if="Object.keys(getAvailablePlugins(formData.plugins)).length">
                     <label class="col-sm-2 col-form-label">{{ t('pluginOpts') }}</label>
                     <div class="col-sm-10">
                       <v-jsoneditor v-model="task.addition" :options="{mode:'tree'}" :plus="false" height="180px"></v-jsoneditor>
@@ -506,9 +506,9 @@
           </div>
 
           <div class="bottom-buttons">
-            <button class="btn btn-success" data-toggle="tooltip" data-placement="top" :title="t('saveCtrl')"><i class="bi bi-floppy2-fill"></i></button>
-            <button type="button" class="btn btn-primary" data-toggle="tooltip" data-placement="top" :title="t('runCtrl')" @click="runScriptNow()"><i class="bi bi-play-fill"></i></button>
-            <button type="button" class="btn btn-info" data-toggle="tooltip" data-placement="top" :title="t('scrollTop')" @click="scrollToX(0)" @dblclick="scrollToX()"><i class="bi bi-chevron-bar-up"></i></button>
+            <button class="btn btn-success" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('saveCtrl')"><i class="bi bi-floppy2-fill"></i></button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('runCtrl')" @click="runScriptNow()"><i class="bi bi-play-fill"></i></button>
+            <button type="button" class="btn btn-info" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('scrollTop')" @click="scrollToX(0)" @dblclick="scrollToX()"><i class="bi bi-chevron-bar-up"></i></button>
           </div>
         </form>
       </main>
@@ -521,9 +521,7 @@
             <h5 class="modal-title"><b>{{ t('runLog') }}</b>
               <div v-if="modalLoading" class="spinner-border spinner-border-sm m-1" role="status"></div>
             </h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <pre>{{ run_log }}</pre>
@@ -542,9 +540,7 @@
               <b v-else>{{ t('pickStartFile') }}</b>
               <div v-if="modalLoading" class="spinner-border spinner-border-sm m-1" role="status"></div>
             </h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body small">
             <div class="mb-3 row" v-if="fileSelect.switchShare">
@@ -558,7 +554,7 @@
                 </div>
                 <div v-if="fileSelect.share.datetime"><b>{{ t('time') }}：</b><span>{{ fileSelect.share.datetime }}</span></div>
               </div>
-              <div class="col-sm-4 text-right">
+              <div class="col-sm-4 text-end">
                 <div class="btn-group">
                   <button type="button" class="btn btn-sm btn-outline-primary" @click="switchShare(-1)">{{ t('prev') }}</button>
                   <button type="button" class="btn btn-sm btn-outline-primary" @click="switchShare(1)">{{ t('next') }}</button>
@@ -567,12 +563,12 @@
             </div>
             <div class="alert alert-warning" v-if="fileSelect.error">{{ fileSelect.error }}</div>
             <div v-else>
-              <div class="mb-3" v-if="fileSelect.previewRegex && fileSelect.index<this.formData.tasklist.length">
-                <div><b>{{ t('matchExpr') }}：</b><span class="badge badge-info">{{ formData.tasklist[fileSelect.index].pattern }}</span>
-                  <span class="badge badge-info" v-if="formData.tasklist[fileSelect.index].pattern in formData.magic_regex">{{ formData.magic_regex[formData.tasklist[fileSelect.index].pattern].pattern }}</span>
+              <div class="mb-3" v-if="fileSelect.previewRegex && fileSelect.index < formData.tasklist.length">
+                <div><b>{{ t('matchExpr') }}：</b><span class="badge text-bg-info">{{ formData.tasklist[fileSelect.index].pattern }}</span>
+                  <span class="badge text-bg-info" v-if="formData.tasklist[fileSelect.index].pattern in formData.magic_regex">{{ formData.magic_regex[formData.tasklist[fileSelect.index].pattern].pattern }}</span>
                 </div>
-                <div><b>{{ t('replaceExpr') }}：</b><span class="badge badge-info" v-if="formData.tasklist[fileSelect.index].replace">{{ formData.tasklist[fileSelect.index].replace }}</span>
-                  <span class="badge badge-info" v-else-if="formData.tasklist[fileSelect.index].pattern in formData.magic_regex">{{ formData.magic_regex[formData.tasklist[fileSelect.index].pattern].replace }}</span>
+                <div><b>{{ t('replaceExpr') }}：</b><span class="badge text-bg-info" v-if="formData.tasklist[fileSelect.index].replace">{{ formData.tasklist[fileSelect.index].replace }}</span>
+                  <span class="badge text-bg-info" v-else-if="formData.tasklist[fileSelect.index].pattern in formData.magic_regex">{{ formData.magic_regex[formData.tasklist[fileSelect.index].pattern].replace }}</span>
                 </div>
               </div>
               <nav aria-label="breadcrumb" v-if="fileSelect.selectDir">
@@ -604,12 +600,12 @@
                 </thead>
                 <tbody>
                   <tr v-for="(file, key) in fileSelect.fileList" :key="key" @click="fileSelect.selectDir ? (file.dir ? navigateTo(file.fid, file.file_name) : null) : selectStartFid(file.fid)" :class="{'cursor-pointer': fileSelect.selectDir ? file.dir : true}">
-                    <td><i class="bi mr-1" :class="file.dir ? 'bi-folder-fill text-warning' : 'bi-file-earmark'"></i>{{file.file_name}}</td>
+                    <td><i class="bi me-1" :class="file.dir ? 'bi-folder-fill text-warning' : 'bi-file-earmark'"></i>{{file.file_name}}</td>
                     <td v-if="fileSelect.selectShare" :class="file.file_name_re ? 'text-success' : file.file_name_saved ? 'text-muted' : 'text-danger'">{{file.file_name_re || file.file_name_saved || '&times;'}}</td>
                     <template v-if="!fileSelect.previewRegex">
                       <td v-if="file.dir">{{ file.include_items }}{{ t('items') }}</td>
-                      <td v-else>{{file.size | size}}</td>
-                      <td>{{file.updated_at | ts2date}}</td>
+                      <td v-else>{{ formatSize(file.size) }}</td>
+                      <td>{{ formatTs(file.updated_at) }}</td>
                       <td v-if="!fileSelect.selectShare"><a class="cursor-pointer text-muted" @click.stop.prevent="deleteFile(file.fid, file.file_name, file.dir)">{{ t('delete') }}</a></td>
                     </template>
                   </tr>
@@ -620,28 +616,69 @@
           <div class="modal-footer" v-if="fileSelect.selectDir && !fileSelect.previewRegex">
             <span>{{ fileSelect.selectShare ? t('transferTo') : t('saveTo') }}</span>
             <button type="button" class="btn btn-primary btn-sm" @click="selectCurrentFolder()">{{ t('currentFolder') }}</button>
-            <button type="button" class="btn btn-primary btn-sm" v-if="!fileSelect.selectShare" @click="selectCurrentFolder(true)">{{ t('currentFolder') }}<span class="badge badge-light" v-if="fileSelect.index<this.formData.tasklist.length">/{{ formData.tasklist[fileSelect.index].taskname }}</span></button>
+            <button type="button" class="btn btn-primary btn-sm" v-if="!fileSelect.selectShare" @click="selectCurrentFolder(true)">{{ t('currentFolder') }}<span class="badge text-bg-light" v-if="fileSelect.index < formData.tasklist.length">/{{ formData.tasklist[fileSelect.index].taskname }}</span></button>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="toast-container">
+    <div class="qas-toasts">
       <div v-for="toast in toasts" :key="toast.id" class="toast show shadow-sm" :class="toast.type" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-body d-flex align-items-center">
-          <i class="bi mr-2" :class="getToastIcon(toast.type)"></i>
+          <i class="bi me-2" :class="getToastIcon(toast.type)"></i>
           <span>{{ toast.message }}</span>
-          <button type="button" class="ml-auto close" @click="removeToast(toast.id)" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+          <button type="button" class="btn-close ms-auto" @click="removeToast(toast.id)" aria-label="Close"></button>
         </div>
       </div>
     </div>
   </div>
   <script>
-    var app = new Vue({
-      el: '#app',
-      data: {
+
+    const VJsoneditor = {
+      name: "VJsoneditor",
+      props: {
+        modelValue: { default: () => ({}) },
+        options: { type: Object, default: () => ({}) },
+        height: { type: String, default: "180px" }
+      },
+      emits: ["update:modelValue"],
+      data() { return { silent: false }; },
+      mounted() {
+        this.editor = new JSONEditor(this.$refs.ed, Object.assign({
+          mode: "tree",
+          mainMenuBar: false,
+          navigationBar: false,
+          statusBar: false,
+          onChangeJSON: (json) => {
+            if (this.silent) return;
+            this.$emit("update:modelValue", json);
+          }
+        }, this.options));
+        this.editor.set(this.modelValue || {});
+      },
+      watch: {
+        modelValue: {
+          deep: true,
+          handler(v) {
+            if (!this.editor) return;
+            try {
+              if (JSON.stringify(this.editor.get()) === JSON.stringify(v || {})) return;
+            } catch (e) {}
+            this.silent = true;
+            this.editor.set(v || {});
+            this.silent = false;
+          }
+        }
+      },
+      beforeUnmount() {
+        if (this.editor) this.editor.destroy();
+      },
+      template: '<div ref="ed" class="qas-jsoneditor" :style="{height: height}"></div>'
+    };
+
+    Vue.createApp({
+      data() {
+        return {
         version: "[[ version ]]",
         versionTips: "",
         plugin_flags: "[[ plugin_flags ]]",
@@ -704,24 +741,14 @@
           sortBy: "updated_at",
           sortOrder: "desc"
         },
+        };
       },
       computed: {
         weekdays: function () {
           return [this.t('week1'), this.t('week2'), this.t('week3'), this.t('week4'), this.t('week5'), this.t('week6'), this.t('week7')];
-        }
-      },
-      filters: {
-        ts2date: function (value) {
-          const date = new Date(value);
-          return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
         },
-        size: function (value) {
-          if (!value) return "";
-          const unitArr = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-          const srcsize = parseFloat(value);
-          const index = srcsize ? Math.floor(Math.log(srcsize) / Math.log(1024)) : 0;
-          const size = (srcsize / Math.pow(1024, index)).toFixed(1).replace(/\.?0+$/, "");
-          return size + unitArr[index];
+        taskDirOptions() {
+          return this.taskDirs.filter(Boolean);
         }
       },
       watch: {
@@ -736,7 +763,7 @@
         this.applyAppearance();
         this.fetchData();
         this.checkNewVersion();
-        $('[data-toggle="tooltip"]').tooltip();
+        this.initTooltips();
         document.addEventListener('keydown', this.handleKeyDown);
         document.addEventListener('click', (e) => {
           if (!e.target.closest('.input-group')) {
@@ -745,7 +772,7 @@
         });
         window.addEventListener('beforeunload', this.handleBeforeUnload);
       },
-      beforeDestroy() {
+      beforeUnmount() {
         window.removeEventListener('beforeunload', this.handleBeforeUnload);
       },
       methods: {
@@ -779,7 +806,7 @@
         changeTab(tab) {
           this.activeTab = tab;
           if (window.innerWidth <= 768) {
-            $('#sidebarMenu').collapse('toggle')
+            this.toggleCollapse('sidebarMenu');
           }
         },
         checkNewVersion() {
@@ -789,7 +816,7 @@
               latestVersion = response.data[0].name;
               console.log(`check version: current ${this.version} latest ${latestVersion}`);
               if (latestVersion != this.version) {
-                this.versionTips += ` <sup><span class="position-absolute badge badge-pill badge-danger">${latestVersion}</span></sup>`;
+                this.versionTips += ` <sup><span class="position-absolute badge rounded-pill text-bg-danger">${latestVersion}</span></sup>`;
               }
             })
             .catch(error => {
@@ -884,12 +911,12 @@
             key = prompt(this.t('addPushKey'), "");
           }
           if (key != "" && key != null)
-            this.$set(this.formData.push_config, key, "");
+            this.formData.push_config[key] = "";
           this.newPushKey = "";
         },
         removePush(key) {
           if (confirm(this.t('confirmDelete')))
-            this.$delete(this.formData.push_config, key);
+            delete this.formData.push_config[key];
         },
         addTask() {
           newTask = { ...this.newTask }
@@ -908,9 +935,7 @@
           }
           this.formData.tasklist.push(newTask);
           setTimeout(() => {
-            $('#collapse_' + (this.formData.tasklist.length - 1)).collapse('show').on('shown.bs.collapse', () => {
-              this.scrollToX();
-            });
+            this.showCollapse('collapse_' + (this.formData.tasklist.length - 1), true);
           }, 1);
         },
         focusTaskname(index, task) {
@@ -942,7 +967,7 @@
         changeShareurl(task) {
           if (!task.shareurl)
             return;
-          this.$set(task, "shareurl_ban", undefined);
+          task.shareurl_ban = undefined;
           try {
             const matches = decodeURIComponent(task.shareurl).match(/\/(\w{32})-([^\/]+)$/);
             if (matches) {
@@ -965,11 +990,11 @@
                   return;
                 }
               }
-              this.$set(task, "shareurl_ban", share_detail.error);
+              task.shareurl_ban = share_detail.error;
             } else {
               task.taskname = task.taskname == "" ? share_detail.share.title : task.taskname;
               task.savepath = task.savepath.replace(/TASKNAME/g, share_detail.share.title);
-              this.$set(task, "shareurl_ban", undefined);
+              task.shareurl_ban = undefined;
             }
           }).catch(error => {
             console.error('Error get_share_detail:', error);
@@ -998,7 +1023,7 @@
               return;
             }
           }
-          $('#logModal').modal('toggle');
+          this.toggleModal('logModal');
           this.modalLoading = true;
           this.run_log = '';
           try {
@@ -1120,10 +1145,10 @@
             axios.post('/get_share_detail', { shareurl: item.shareurl })
               .then(res => {
                 if (this.smart_param.isSearching) return;
-                this.$set(item, 'verify', res.data.success);
+                item.verify = res.data.success;
               }).catch(() => {
                 if (this.smart_param.isSearching) return;
-                this.$set(item, 'verify', false);
+                item.verify = false;
               }).finally(() => {
                 if (this.smart_param.isSearching) {
                   this.smart_param.isVerifying = false;
@@ -1145,7 +1170,7 @@
         },
         addMagicRegex() {
           const newKey = `$MAGIC_${Object.keys(this.formData.magic_regex).length + 1}`;
-          this.$set(this.formData.magic_regex, newKey, { pattern: '', replace: '' });
+          this.formData.magic_regex[newKey] = { pattern: '', replace: '' };
         },
         updateMagicRegexKey(oldKey, newKey) {
           if (oldKey !== newKey) {
@@ -1153,13 +1178,13 @@
               this.showToast(this.t('magicExists', { key: newKey }), 'warning');
               return;
             }
-            this.$set(this.formData.magic_regex, newKey, this.formData.magic_regex[oldKey]);
-            this.$delete(this.formData.magic_regex, oldKey);
+            this.formData.magic_regex[newKey] = this.formData.magic_regex[oldKey];
+            delete this.formData.magic_regex[oldKey];
           }
         },
         removeMagicRegex(key) {
           if (confirm(this.t('confirmDeleteMagic', { key: key }))) {
-            this.$delete(this.formData.magic_regex, key);
+            delete this.formData.magic_regex[key];
           }
         },
         deleteFile(fid, fname, isDir) {
@@ -1203,7 +1228,7 @@
           this.fileSelect.fileList = [];
           this.fileSelect.paths = [];
           this.fileSelect.index = index;
-          $('#fileSelectModal').modal('toggle');
+          this.toggleModal('fileSelectModal');
           this.formData.tasklist[index].savepath = this.formData.tasklist[index].savepath.replace(/\/+/g, "/");
           this.getSavepathDetail(this.formData.tasklist[index].savepath);
         },
@@ -1241,7 +1266,7 @@
           }
           this.fileSelect.shareurl = newShareurl;
           this.fileSelect.index = index;
-          $('#fileSelectModal').modal('toggle');
+          this.toggleModal('fileSelectModal');
           this.getShareDetail();
         },
         switchShare(index) {
@@ -1295,11 +1320,11 @@
               this.formData.tasklist[this.fileSelect.index].savepath += "/" + this.formData.tasklist[this.fileSelect.index].taskname
             }
           }
-          $('#fileSelectModal').modal('hide')
+          this.hideModal('fileSelectModal')
         },
         selectStartFid(fid) {
-          Vue.set(this.formData.tasklist[this.fileSelect.index], 'startfid', fid);
-          $('#fileSelectModal').modal('hide')
+          this.formData.tasklist[this.fileSelect.index].startfid = fid;
+          this.hideModal('fileSelectModal')
         },
         getShareurl(shareurl, dir = {}) {
           if (dir == {} || dir.fid == 0) {
@@ -1381,9 +1406,7 @@
               this.formData.tasklist.push(task);
               this.showToast(this.t('imported'), "success");
               setTimeout(() => {
-                $('#collapse_' + (this.formData.tasklist.length - 1)).collapse('show').on('shown.bs.collapse', () => {
-                  this.scrollToX();
-                });
+                this.showCollapse('collapse_' + (this.formData.tasklist.length - 1), true);
               }, 1);
             } catch (error) {
               this.showToast(this.t('parseFail'), "error");
@@ -1408,8 +1431,48 @@
             default: return 'bi-info-circle-fill text-info';
           }
         },
+        initTooltips() {
+          document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+          });
+        },
+        toggleModal(id) {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).toggle();
+        },
+        hideModal(id) {
+          const el = document.getElementById(id);
+          const inst = bootstrap.Modal.getInstance(el);
+          if (inst) inst.hide();
+          else bootstrap.Modal.getOrCreateInstance(el).hide();
+        },
+        toggleCollapse(id) {
+          const el = document.getElementById(id);
+          if (el) bootstrap.Collapse.getOrCreateInstance(el).toggle();
+        },
+        showCollapse(id, scroll) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const c = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+          if (scroll) {
+            el.addEventListener('shown.bs.collapse', () => this.scrollToX(), { once: true });
+          }
+          c.show();
+        },
+        formatTs(value) {
+          const date = new Date(value);
+          return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        },
+        formatSize(value) {
+          if (!value) return "";
+          const unitArr = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+          const srcsize = parseFloat(value);
+          const index = srcsize ? Math.floor(Math.log(srcsize) / Math.log(1024)) : 0;
+          const size = (srcsize / Math.pow(1024, index)).toFixed(1).replace(/\.?0+$/, "");
+          return size + unitArr[index];
+        },
+
       }
-    });
+    }).component('v-jsoneditor', VJsoneditor).mount('#app');
   </script>
 </body>
 
