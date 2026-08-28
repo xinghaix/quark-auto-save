@@ -335,6 +335,11 @@ html[data-theme="sunset"] .btn-success, html[data-theme="sunset"] .btn-info { co
 .qas-mobile-nav { display: none; }
 .qas-jsoneditor { min-width: 0; overflow: visible; border: 1px solid var(--line); border-radius: 10px; }
 .jsoneditor { border-color: var(--line) !important; background: var(--input-bg) !important; }
+.qas-mcp-endpoint { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.qas-mcp-permission-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.qas-mcp-permissions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 16px; }
+.qas-mcp-permissions .form-check { min-width: 0; padding: 8px 10px 8px 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--qas-surface-sub); }
+.qas-mcp-permissions code { margin-left: 4px; color: var(--muted); font-size: 11px; }
 
 @media (max-width: 991.98px) {
   body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
@@ -378,6 +383,7 @@ html[data-theme="sunset"] .btn-success, html[data-theme="sunset"] .btn-info { co
   .qas-mobile-nav-item.active { color: var(--primary); background: var(--primary-soft); }
   .qas-card { padding: 18px; }
   .qas-card-head { flex-wrap: wrap; }
+  .qas-mcp-permissions { grid-template-columns: 1fr; }
   .qas-toolbar-actions { width: 100%; justify-content: stretch; }
   .qas-toolbar-actions > * { flex: 1 1 0; }
   .qas-task.qas-task { padding: 0 14px 4px; }

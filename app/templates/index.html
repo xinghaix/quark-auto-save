@@ -268,6 +268,47 @@
               </div>
             </div>
 
+            <div class="qas-card qas-mcp-card">
+              <div class="qas-card-head">
+                <h2><i class="bi bi-diagram-3"></i> {{ t('mcp') }}</h2>
+                <span class="qas-badge" :class="formData.mcp.enabled ? 'ok' : ''">{{ formData.mcp.enabled ? t('enable') : t('mcpDisabled') }}</span>
+              </div>
+              <p class="qas-help">{{ t('mcpHelp') }}</p>
+              <div class="row mb-3">
+                <label class="col-sm-2 col-form-label">{{ t('mcpEndpoint') }}</label>
+                <div class="col-sm-10">
+                  <code class="qas-mcp-endpoint">{{ mcpEndpoint }}</code>
+                  <small class="text-muted d-block">{{ t('mcpProtocol') }}</small>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-sm-2 col-form-label">{{ t('mcpApiKey') }}</label>
+                <div class="col-sm-10">
+                  <div class="input-group qas-mcp-key-group">
+                    <input :type="mcpShowKey ? 'text' : 'password'" class="form-control" v-model="formData.mcp.api_key" :placeholder="t('mcpApiKeyPlaceholder')" autocomplete="new-password">
+                    <button type="button" class="btn btn-outline-primary" @click="generateMcpKey"><i class="bi bi-arrow-repeat"></i> {{ t('mcpGenerateKey') }}</button>
+                    <button type="button" class="btn btn-outline-secondary" @click="mcpShowKey = !mcpShowKey" :aria-label="mcpShowKey ? t('mcpHideKey') : t('mcpShowKey')"><i :class="mcpShowKey ? 'bi bi-eye-slash' : 'bi bi-eye'"></i> {{ mcpShowKey ? t('mcpHideKey') : t('mcpShowKey') }}</button>
+                  </div>
+                  <small v-if="formData.mcp.api_key_configured" class="text-muted">{{ t('mcpKeyConfigured') }}</small>
+                </div>
+              </div>
+              <div class="form-check mb-3">
+                <input id="mcp-enabled" type="checkbox" class="form-check-input" v-model="formData.mcp.enabled" :disabled="!formData.mcp.api_key_configured && !formData.mcp.api_key">
+                <label class="form-check-label" for="mcp-enabled">{{ t('enable') }}</label>
+                <small class="text-muted d-block ms-4">{{ t('mcpEnableHelp') }}</small>
+              </div>
+              <div class="qas-mcp-permission-head">
+                <b>{{ t('mcpPermissions') }}</b>
+                <small class="text-muted">{{ t('mcpPermissionsHelp') }}</small>
+              </div>
+              <div class="qas-mcp-permissions">
+                <label v-for="permission in mcpPermissionOptions" :key="permission.key" class="form-check">
+                  <input class="form-check-input" type="checkbox" :id="'mcp-permission-'+permission.key.replace('.', '-')" v-model="formData.mcp.permissions[permission.key]">
+                  <span class="form-check-label">{{ t(permission.label) }} <code>{{ permission.key }}</code></span>
+                </label>
+              </div>
+            </div>
+
             <div class="qas-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-search"></i> {{ t('search') }}</h2>
@@ -748,12 +789,43 @@
         uiTheme: localStorage.getItem('qas.theme') || 'light',
         newPushKey: "",
         pushChannelOptions: ["PUSH_KEY", "DEER_KEY", "TG_BOT_TOKEN", "TG_USER_ID", "QYWX_KEY", "BARK_PUSH", "PUSH_PLUS_TOKEN", "NTFY_URL", "NTFY_TOPIC", "SMTP_EMAIL", "WEBHOOK_URL", "QUARK_SIGN_NOTIFY"],
+        mcpEndpoint: window.location.origin + '/mcp',
+        mcpShowKey: false,
+        mcpPermissionOptions: [
+          { key: 'tasks.read', label: 'mcpPermTasksRead' },
+          { key: 'tasks.create', label: 'mcpPermTasksCreate' },
+          { key: 'tasks.update', label: 'mcpPermTasksUpdate' },
+          { key: 'tasks.delete', label: 'mcpPermTasksDelete' },
+          { key: 'tasks.run', label: 'mcpPermTasksRun' },
+          { key: 'logs.read', label: 'mcpPermLogsRead' },
+          { key: 'search.read', label: 'mcpPermSearchRead' },
+          { key: 'files.read', label: 'mcpPermFilesRead' },
+          { key: 'files.write', label: 'mcpPermFilesWrite' },
+          { key: 'config.read', label: 'mcpPermConfigRead' }
+        ],
         formData: {
           cookie: [],
           push_config: {},
           media_servers: {},
           tasklist: [],
           magic_regex: {},
+          mcp: {
+            enabled: false,
+            api_key: '',
+            api_key_configured: false,
+            permissions: {
+              'tasks.read': true,
+              'tasks.create': false,
+              'tasks.update': false,
+              'tasks.delete': false,
+              'tasks.run': false,
+              'logs.read': true,
+              'search.read': true,
+              'files.read': true,
+              'files.write': false,
+              'config.read': false
+            }
+          },
           source: {
             net: { enable: "" },
             cloudsaver: { server: "", username: "", password: "", token: "" },
@@ -842,11 +914,24 @@
         t(key, vars) {
           return window.QAS_t(this.uiLang, key, vars);
         },
+        generateMcpKey() {
+          if (!window.crypto || !window.crypto.getRandomValues) {
+            this.showToast(this.t('mcpCryptoUnavailable'), 'error');
+            return;
+          }
+          const bytes = new Uint8Array(32);
+          window.crypto.getRandomValues(bytes);
+          this.formData.mcp.api_key = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+          this.mcpShowKey = true;
+          this.showToast(this.t('mcpKeyGenerated'), 'success');
+        },
         tMsg(message) {
           const map = {
             "配置更新成功": "msgSaved",
             "配置更新失败": "msgSaveFail",
-            "未登录": "msgNotLogin"
+            "未登录": "msgNotLogin",
+            "启用 MCP 前必须设置 API key": "mcpKeyRequired",
+            "MCP API key 至少需要 20 个字符": "mcpKeyTooShort"
           };
           return map[message] ? this.t(map[message]) : message;
         },
@@ -919,6 +1004,24 @@
               if (!config_data.source.net) {
                 config_data.source.net = { enable: "" };
               }
+              const mcp = config_data.mcp || {};
+              config_data.mcp = {
+                enabled: !!mcp.enabled,
+                api_key: '',
+                api_key_configured: !!mcp.api_key_configured || !!mcp.api_key_hash,
+                permissions: Object.assign({
+                  'tasks.read': true,
+                  'tasks.create': false,
+                  'tasks.update': false,
+                  'tasks.delete': false,
+                  'tasks.run': false,
+                  'logs.read': true,
+                  'search.read': true,
+                  'files.read': true,
+                  'files.write': false,
+                  'config.read': false
+                }, mcp.permissions || {})
+              };
               this.formData = config_data;
               setTimeout(() => {
                 this.configModified = false;

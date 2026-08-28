@@ -50,6 +50,12 @@ def main() -> int:
     assert 'qas-config-savebar' in INDEX
     assert 'qas-global-save' in INDEX
     assert 'qas-file-action' in INDEX
+    assert 'qas-mcp-card' in INDEX
+    assert "formData.mcp.api_key" in INDEX
+    assert "mcpPermissionOptions" in INDEX
+    assert "mcpEndpoint" in INDEX
+    assert "generateMcpKey" in INDEX
+    assert "mcpShowKey" in INDEX
     assert 'openLog()' in INDEX
     assert 'v-html="versionTips"' not in INDEX
     assert 'latestVersion' in INDEX
@@ -67,6 +73,8 @@ def main() -> int:
     assert "@media (max-width: 767px)" in dashboard_css
     assert ".qas-task-actions .btn { width: 44px; min-height: 44px; }" in dashboard_css
     assert ".qas-jsoneditor { min-width: 0; overflow: visible;" in dashboard_css
+    assert ".qas-mcp-permissions" in dashboard_css
+    assert "var(--qas-surface-sub)" in dashboard_css
     assert "grid-template-columns" in dashboard_css
     assert "--qas-canvas-bg" in (STATIC / "css/theme.css").read_text(encoding="utf-8")
     assert "input-group-prepend" not in HTML

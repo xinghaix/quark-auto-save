@@ -118,6 +118,51 @@ services:
 
 管理地址：http://yourhost:5005
 
+### MCP 远程管理
+
+在 WebUI「系统配置 → MCP 服务」中启用 MCP，先设置至少 20 个字符的 API key，再勾选需要暴露的权限并保存。MCP 与管理后台共用端口，标准地址为：
+
+```text
+http://yourhost:5005/mcp
+```
+
+服务支持标准 **Streamable HTTP**，POST 请求可返回 JSON 或 `text/event-stream`；同时支持带 API key 的 stdio，方便本机 Agent 使用。HTTP 请求使用以下任一认证方式：
+
+```http
+Authorization: Bearer <MCP_API_KEY>
+```
+
+或：
+
+```http
+X-API-Key: <MCP_API_KEY>
+```
+
+Hermes 等 MCP 客户端可以这样配置：
+
+```yaml
+mcp_servers:
+  qas:
+    url: "http://yourhost:5005/mcp"
+    headers:
+      Authorization: "Bearer <MCP_API_KEY>"
+```
+
+本机 stdio 配置：
+
+```yaml
+mcp_servers:
+  qas-local:
+    command: "python3"
+    args: ["/app/app/run.py", "--mcp-stdio"]
+    env:
+      QAS_MCP_API_KEY: "<MCP_API_KEY>"
+```
+
+当前工具包括任务查询/创建/修改/删除/运行、运行状态与日志查询、电视剧/资源搜索、分享详情、夸克文件浏览/删除/重命名、脱敏配置读取和系统状态查询。默认只开放读取类权限；删除、重命名、修改和运行等写操作必须在设置中心显式开启。API key 只保存哈希，不会通过 `/data` 或 MCP 返回。
+
+浏览器跨域调用默认关闭；确需使用时，通过环境变量 `MCP_ALLOWED_ORIGINS` 指定逗号分隔的完整 Origin，禁止使用 `*`。
+
 | 环境变量         | 默认       | 备注                                     |
 | ---------------- | ---------- | ---------------------------------------- |
 | `WEBUI_USERNAME` | `admin`    | 管理账号                                 |
