@@ -20,85 +20,218 @@
     <style>
         body {
             min-height: 100vh;
+            margin: 0;
+            padding: clamp(18px, 4vw, 48px);
             display: flex;
             align-items: center;
             background:
-                radial-gradient(1200px 400px at 10% -10%, color-mix(in srgb, var(--primary) 22%, transparent), transparent),
+                radial-gradient(900px 520px at 0% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent),
                 var(--bg);
         }
-        .login-card {
-            max-width: 420px;
-            width: 100%;
-            margin: 0 auto;
-            background: var(--surface);
-            border: 1px solid var(--line);
-            box-shadow: var(--shadow);
-            border-radius: 20px;
+        .login-shell {
+            width: min(1120px, 100%);
+            min-height: 620px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 1.08fr .92fr;
             overflow: hidden;
-        }
-        .login-header { padding: 1.6rem 2rem 0.4rem; text-align: center; }
-        .login-body { padding: 1.4rem 2rem 2rem; }
-        .login-tools { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 1rem; }
-        .login-tools select {
-            background: var(--input-bg);
-            color: var(--text);
             border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 4px 8px;
+            border-radius: 24px;
+            background: var(--surface);
+            box-shadow: var(--shadow);
         }
-        .btn-login { width: 100%; border-radius: 12px; padding: 10px 20px; }
+        .login-brand {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(36px, 6vw, 76px);
+            background:
+                linear-gradient(145deg, color-mix(in srgb, var(--primary) 12%, var(--surface)), var(--surface)),
+                var(--surface);
+        }
+        .login-brand-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+            font-weight: 750;
+            letter-spacing: .02em;
+        }
+        .login-brand-mark i { font-size: 24px; }
+        .login-kicker {
+            margin: 54px 0 12px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 750;
+            letter-spacing: .16em;
+        }
+        .login-brand h1 {
+            margin: 0;
+            color: var(--text);
+            font-size: clamp(2rem, 4vw, 3.35rem);
+            font-weight: 800;
+            line-height: 1.15;
+        }
+        .login-brand-subtitle {
+            max-width: 460px;
+            margin: 18px 0 30px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        .login-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            max-width: 540px;
+        }
+        .login-feature {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 54px;
+            padding: 12px 14px;
+            border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--line));
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--surface) 72%, var(--primary-soft));
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 650;
+            line-height: 1.35;
+        }
+        .login-feature i { color: var(--primary); font-size: 18px; }
+        .login-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(22px, 5vw, 64px);
+            background: var(--bg);
+        }
+        .login-tools {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .login-tools select {
+            min-height: 38px;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            background: var(--surface);
+            color: var(--text);
+        }
+        .login-card {
+            width: 100%;
+            padding: clamp(24px, 4vw, 36px);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: var(--surface);
+            box-shadow: 0 14px 36px color-mix(in srgb, var(--text) 10%, transparent);
+        }
+        .login-card-icon {
+            display: grid;
+            width: 44px;
+            height: 44px;
+            margin-bottom: 18px;
+            place-items: center;
+            border-radius: 12px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-size: 22px;
+        }
+        .login-header h2 { margin: 0 0 8px; color: var(--text); font-size: 1.55rem; font-weight: 750; }
+        .login-header p { margin: 0 0 24px; color: var(--muted); font-size: 13px; }
+        .login-card .form-label { color: var(--text); font-weight: 650; }
+        .login-card .input-group-text { color: var(--muted); border-color: var(--line); background: var(--surface-2); }
+        .login-card .form-control { min-height: 46px; border-color: var(--line); background: var(--input-bg); color: var(--text); }
+        .login-card .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+        .btn-login { width: 100%; min-height: 48px; margin-top: 4px; border-radius: 11px; font-weight: 700; }
+        .login-license { margin: 22px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
+        @media (max-width: 767px) {
+            body { display: block; padding: 0; background: var(--surface); }
+            .login-shell { display: block; min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+            .login-brand { display: block; padding: 28px 22px 22px; }
+            .login-kicker { margin-top: 30px; }
+            .login-brand h1 { font-size: 2rem; }
+            .login-brand-subtitle { margin: 12px 0 20px; font-size: 14px; }
+            .login-feature-grid { gap: 8px; }
+            .login-feature { min-height: 48px; padding: 9px 10px; font-size: 11px; }
+            .login-feature i { font-size: 16px; }
+            .login-panel { padding: 18px 16px 32px; background: var(--surface); }
+            .login-tools { margin-bottom: 12px; }
+            .login-card { padding: 24px 20px; }
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="login-card">
-            <div class="login-header">
-                <h1 class="mb-2" id="t-title">登录</h1>
-                <p class="text-muted" id="t-welcome">欢迎回来，请登录您的账户</p>
+    <main class="login-shell">
+        <section class="login-brand" aria-labelledby="t-brand-title">
+            <div class="login-brand-mark"><i class="bi bi-clouds-fill" aria-hidden="true"></i><span id="t-brand-name">夸克自动转存</span></div>
+            <p class="login-kicker" id="t-brand-kicker">QUARK AUTO SAVE</p>
+            <h1 id="t-brand-title">夸克自动转存</h1>
+            <p class="login-brand-subtitle" id="t-brand-subtitle">让网盘转存变成可控的自动化流程</p>
+            <div class="login-feature-grid" aria-label="Product features">
+                <div class="login-feature"><i class="bi bi-calendar2-check" aria-hidden="true"></i><span id="t-feature-1">自动追更与定时调度</span></div>
+                <div class="login-feature"><i class="bi bi-magic" aria-hidden="true"></i><span id="t-feature-2">智能匹配与规则重命名</span></div>
+                <div class="login-feature"><i class="bi bi-hdd-network" aria-hidden="true"></i><span id="t-feature-3">Alist / STRM 媒体联动</span></div>
+                <div class="login-feature"><i class="bi bi-phone" aria-hidden="true"></i><span id="t-feature-4">桌面与手机端响应式</span></div>
             </div>
-            <div class="login-body">
-                <div class="login-tools">
-                    <select id="theme" aria-label="theme">
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="ocean">Ocean</option>
-                        <option value="sunset">Sunset</option>
-                    </select>
-                    <select id="lang" aria-label="language">
-                        <option value="zh">中文</option>
-                        <option value="en">English</option>
-                    </select>
+        </section>
+
+        <section class="login-panel" aria-labelledby="t-title">
+            <div class="login-tools">
+                <select id="theme" aria-label="theme">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="ocean">Ocean</option>
+                    <option value="sunset">Sunset</option>
+                </select>
+                <select id="lang" aria-label="language">
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="login-card">
+                <div class="login-card-icon"><i class="bi bi-shield-lock" aria-hidden="true"></i></div>
+                <div class="login-header">
+                    <h2 id="t-title">登录</h2>
+                    <p id="t-welcome">欢迎回来，请登录管理后台</p>
                 </div>
                 {% if message %}
-                <div class="alert alert-danger text-center" role="alert" id="login-error">[[ message ]]</div>
+                <div class="alert alert-danger" role="alert" id="login-error">[[ message ]]</div>
                 {% endif %}
                 <form action="/login" method="POST">
                     <div class="mb-3">
                         <label for="username" class="form-label" id="t-user">用户名</label>
                         <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required>
+                            <span class="input-group-text"><i class="bi bi-person-fill" aria-hidden="true"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" autocomplete="username" required>
                         </div>
                     </div>
                     <div class="mb-4">
                         <label for="password" class="form-label" id="t-pass">密码</label>
                         <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <span class="input-group-text"><i class="bi bi-lock-fill" aria-hidden="true"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-login" id="t-btn">登录</button>
                 </form>
+                <p class="login-license" id="t-license">开源项目 · AGPL-3.0 License</p>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
     <script>
         (function () {
             var langSel = document.getElementById('lang');
             var themeSel = document.getElementById('theme');
             langSel.value = localStorage.getItem('qas.lang') || 'zh';
             themeSel.value = localStorage.getItem('qas.theme') || 'light';
+            function text(id, lang, key) {
+                document.getElementById(id).textContent = QAS_t(lang, key);
+            }
             function apply() {
                 var lang = langSel.value;
                 localStorage.setItem('qas.lang', lang);
@@ -106,11 +239,20 @@
                 document.documentElement.setAttribute('data-theme', themeSel.value);
                 window.QAS_applyHtmlLang(lang);
                 document.title = QAS_t(lang, 'loginTitle');
-                document.getElementById('t-title').textContent = QAS_t(lang, 'loginTitle');
-                document.getElementById('t-welcome').textContent = QAS_t(lang, 'loginWelcome');
-                document.getElementById('t-user').textContent = QAS_t(lang, 'username');
-                document.getElementById('t-pass').textContent = QAS_t(lang, 'password');
-                document.getElementById('t-btn').textContent = QAS_t(lang, 'loginBtn');
+                text('t-brand-name', lang, 'appName');
+                text('t-brand-kicker', lang, 'loginKicker');
+                text('t-brand-title', lang, 'appName');
+                text('t-brand-subtitle', lang, 'loginBrandSubtitle');
+                text('t-feature-1', lang, 'loginFeature1');
+                text('t-feature-2', lang, 'loginFeature2');
+                text('t-feature-3', lang, 'loginFeature3');
+                text('t-feature-4', lang, 'loginFeature4');
+                text('t-title', lang, 'loginTitle');
+                text('t-welcome', lang, 'loginWelcome');
+                text('t-user', lang, 'username');
+                text('t-pass', lang, 'password');
+                text('t-btn', lang, 'loginBtn');
+                text('t-license', lang, 'loginLicense');
                 var err = document.getElementById('login-error');
                 if (err) err.textContent = QAS_t(lang, 'loginFailed');
             }

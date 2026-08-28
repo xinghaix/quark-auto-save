@@ -1,20 +1,20 @@
 /* Fork UI themes. Based on Cp0204/quark-auto-save, AGPL-3.0. */
 :root,
 html[data-theme="light"] {
-  --bg: #eef1f7;
-  --bg-accent: #e4e9f4;
+  --bg: #f1f5f9;
+  --bg-accent: #e2e8f0;
   --surface: #ffffff;
-  --surface-2: #f7f8fc;
-  --text: #1c2434;
-  --muted: #667085;
-  --line: #e4e7ef;
-  --primary: #4c6fff;
-  --primary-hover: #3b5bf0;
-  --primary-soft: #edf1ff;
-  --success: #12b76a;
-  --danger: #f04438;
-  --warning: #f79009;
-  --info: #0ba5ec;
+  --surface-2: #f8fafc;
+  --text: #0f172a;
+  --muted: #475569;
+  --line: #cbd5e1;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --info: #0284c7;
   --shadow: 0 10px 30px rgba(28, 36, 52, 0.08);
   --radius: 14px;
   --sidebar: #ffffff;
@@ -23,6 +23,26 @@ html[data-theme="light"] {
   --input-bg: #ffffff;
   --table-hover: #f4f6fb;
   --fab-shadow: 0 10px 24px rgba(76, 111, 255, 0.28);
+  /* Design-spec aliases used by the responsive shell. */
+  --qas-canvas-bg: var(--bg);
+  --qas-desktop-bg: var(--surface-2);
+  --qas-surface: var(--surface);
+  --qas-surface-sub: var(--surface-2);
+  --qas-border: var(--line);
+  --qas-border-active: #93c5fd;
+  --qas-text-main: var(--text);
+  --qas-text-muted: var(--muted);
+  --qas-text-faint: #64748b;
+  --qas-primary: var(--primary);
+  --qas-primary-soft: var(--primary-soft);
+  --qas-success: var(--success);
+  --qas-success-soft: #ecfdf5;
+  --qas-warning: var(--warning);
+  --qas-warning-soft: #fffbeb;
+  --qas-danger: var(--danger);
+  --qas-danger-soft: #fef2f2;
+  --qas-terminal-bg: #0f172a;
+  --qas-terminal-text: #e2e8f0;
 }
 
 html[data-theme="dark"] {

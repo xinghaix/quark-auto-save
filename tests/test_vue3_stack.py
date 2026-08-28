@@ -24,6 +24,51 @@ def main() -> int:
     assert "data-toggle=" not in HTML
     assert "data-target=" not in HTML
     assert "data-dismiss=" not in HTML
+    assert '<link rel="stylesheet" href="./static/css/jsoneditor.min.css">' not in INDEX
+    assert '<script src="./static/js/jsoneditor.min.js"></script>' not in INDEX
+    assert "qasLoadJsonEditor" in INDEX
+    assert "await qasLoadJsonEditor()" in INDEX
+    assert "editorReadyTasks" in INDEX
+    assert "jsonEditorLoadFailed" in INDEX
+    assert "retry" in INDEX
+    assert "editorError" in INDEX
+    assert '@click="prepareEditor(task)"' in INDEX
+    assert '<v-jsoneditor v-if="editorReadyTasks.includes(task)"' in INDEX
+    assert "axios.post('/update', this.formData)" in INDEX
+    assert "editorReady: true" not in INDEX
+    assert 'class="qas-mobile-nav"' in INDEX
+    assert 'd-lg-none' in INDEX
+    assert 'window.innerWidth < 992' in INDEX
+    assert 'getOrCreateInstance(sidebar).hide()' in INDEX
+    assert 'qas-task-header' in INDEX
+    assert 'class="btn w-100 text-start qas-task-toggle"' in INDEX
+    assert ':aria-controls="' in INDEX
+    assert not re.search(r'<div[^>]*data-bs-toggle="collapse"', INDEX)
+    assert 'class="collapse qas-task-body' in INDEX
+    assert 'class="qas-log-console"' in INDEX
+    assert 'qas-task-savebar' in INDEX
+    assert 'qas-config-savebar' in INDEX
+    assert 'qas-global-save' in INDEX
+    assert 'qas-file-action' in INDEX
+    assert 'openLog()' in INDEX
+    assert 'v-html="versionTips"' not in INDEX
+    assert 'latestVersion' in INDEX
+    assert 'version: [[ version|tojson ]]' in INDEX
+    assert 'plugin_flags: [[ plugin_flags|tojson ]]' in INDEX
+    assert 'async copyText' in INDEX
+    assert 'await navigator.clipboard.writeText(text)' in INDEX
+    assert r'partialData.split(/\r?\n/)' in INDEX
+    assert '#logModal .modal-body' in INDEX
+    assert 'text/event-stream' in INDEX
+    assert 'class="login-shell"' in LOGIN
+    dashboard_css = (STATIC / "css/dashboard.css").read_text(encoding="utf-8")
+    assert ".qas-config-view" in dashboard_css
+    assert ".qas-task-body.collapse.show" in dashboard_css
+    assert "@media (max-width: 767px)" in dashboard_css
+    assert ".qas-task-actions .btn { width: 44px; min-height: 44px; }" in dashboard_css
+    assert ".qas-jsoneditor { min-width: 0; overflow: visible;" in dashboard_css
+    assert "grid-template-columns" in dashboard_css
+    assert "--qas-canvas-bg" in (STATIC / "css/theme.css").read_text(encoding="utf-8")
     assert "input-group-prepend" not in HTML
     assert "input-group-append" not in HTML
     assert "| size" not in INDEX

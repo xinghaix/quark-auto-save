@@ -7,13 +7,41 @@
   <title>夸克自动转存</title>
   <link rel="stylesheet" href="./static/css/bootstrap.min.css">
   <link rel="stylesheet" href="./static/css/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="./static/css/jsoneditor.min.css">
-  <link rel="stylesheet" href="./static/css/dashboard.css">
   <link rel="stylesheet" href="./static/css/theme.css">
+  <link rel="stylesheet" href="./static/css/dashboard.css">
   <script src="./static/js/vue.global.prod.js"></script>
   <script src="./static/js/bootstrap.bundle.min.js"></script>
   <script src="./static/js/axios.min.js"></script>
-  <script src="./static/js/jsoneditor.min.js"></script>
+  <script>
+    window.qasLoadJsonEditor = (() => {
+      let promise;
+      return () => {
+        if (window.JSONEditor) return Promise.resolve(window.JSONEditor);
+        if (promise) return promise;
+        promise = Promise.all([
+          new Promise((resolve, reject) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = './static/css/jsoneditor.min.css';
+            link.onload = resolve;
+            link.onerror = () => reject(new Error('JSONEditor stylesheet failed to load'));
+            document.head.appendChild(link);
+          }),
+          new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = './static/js/jsoneditor.min.js';
+            script.onload = () => window.JSONEditor ? resolve(window.JSONEditor) : reject(new Error('JSONEditor is unavailable'));
+            script.onerror = () => reject(new Error('JSONEditor script failed to load'));
+            document.head.appendChild(script);
+          })
+        ]).then(([, editor]) => editor).catch(error => {
+          promise = null;
+          throw error;
+        });
+        return promise;
+      };
+    })();
+  </script>
   <script src="./static/js/i18n.js"></script>
   <script>
     (function () {
@@ -30,7 +58,7 @@
 
     <nav class="navbar navbar-dark sticky-top qas-navbar flex-md-nowrap p-0">
       <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#"><i class="bi bi-clouds"></i> {{ t('appName') }}</a>
-      <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false">
+      <button class="navbar-toggler position-absolute d-lg-none collapsed" type="button" aria-label="Toggle navigation" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false">
         <span class="navbar-toggler-icon"></span>
       </button>
     </nav>
@@ -40,12 +68,12 @@
         <div class="sidebar-sticky pt-3">
           <ul class="nav flex-column">
             <li class="nav-item">
-              <a class="nav-link" href="#" :class="{active: activeTab === 'tasklist'}" @click="changeTab('tasklist')">
+              <a class="nav-link" href="#" :class="{active: activeTab === 'tasklist'}" @click.prevent="changeTab('tasklist')">
                 <i class="bi bi-list-task"></i> {{ t('navTasks') }}
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#" :class="{active: activeTab === 'config'}" @click="changeTab('config')">
+              <a class="nav-link" href="#" :class="{active: activeTab === 'config'}" @click.prevent="changeTab('config')">
                 <i class="bi bi-gear-fill"></i> {{ t('navConfig') }}
               </a>
             </li>
@@ -64,10 +92,10 @@
                 <img src="./static/img/qrcode_tutorial.png">
               </span>
             </p>
-            <p><a target="_blank" href="https://github.com/Cp0204/quark-auto-save/wiki"><i class="bi bi-book me-1"></i>{{ t('wiki') }}</a></p>
+            <p><a target="_blank" rel="noopener noreferrer" href="https://github.com/Cp0204/quark-auto-save/wiki"><i class="bi bi-book me-1"></i>{{ t('wiki') }}</a></p>
             <p><a href="./static/js/qas.addtask.user.js"><i class="bi bi-cloud-plus-fill me-1"></i>{{ t('userscript') }}</a></p>
-            <p><a target="_blank" href="https://github.com/xinghaix/quark-auto-save"><i class="bi bi-github me-1"></i>{{ t('github') }}</a></p>
-            <p><span v-html="versionTips"></span></p>
+            <p><a target="_blank" rel="noopener noreferrer" href="https://github.com/xinghaix/quark-auto-save"><i class="bi bi-github me-1"></i>{{ t('github') }}</a></p>
+            <p><span>{{ version }}</span><sup v-if="latestVersion && latestVersion !== version"><span class="position-absolute badge rounded-pill text-bg-danger">{{ latestVersion }}</span></sup></p>
           </div>
         </div>
       </nav>
@@ -75,7 +103,7 @@
       <main class="col-md-9 col-lg-10 ms-sm-auto qas-main">
         <form @submit.prevent="saveConfig" @keydown.enter.prevent>
 
-          <div v-if="activeTab === 'config'">
+          <div class="qas-config-view" v-if="activeTab === 'config'">
             <div class="qas-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-palette"></i> {{ t('appearance') }}</h2>
@@ -110,7 +138,7 @@
               </div>
               <p class="qas-help">
                 {{ t('cookieHelp1') }}
-                <a href="https://github.com/Cp0204/quark-auto-save/wiki/使用技巧集锦#每日签到领空间" target="_blank">{{ t('wikiCookie') }}</a>
+                <a href="https://github.com/Cp0204/quark-auto-save/wiki/使用技巧集锦#每日签到领空间" target="_blank" rel="noopener noreferrer">{{ t('wikiCookie') }}</a>
                 <br>{{ t('cookieHelp2') }}
               </p>
               <div v-for="(value, index) in formData.cookie" :key="'ck'+index" class="input-group mb-2">
@@ -129,7 +157,7 @@
             <div class="qas-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-clock"></i> {{ t('crontab') }}</h2>
-                <a class="btn btn-sm btn-outline-secondary" target="_blank" href="https://tool.lu/crontab/">{{ t('crontabHint') }}</a>
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="https://tool.lu/crontab/">{{ t('crontabHint') }}</a>
               </div>
               <p class="qas-help">{{ t('crontabHelp') }}</p>
               <div class="mb-2">
@@ -151,7 +179,7 @@
                   <button type="button" class="btn btn-success btn-sm" :title="t('notifyTest')" @click="testPush()"><i class="bi bi-lightning"></i> {{ t('notifyTest') }}</button>
                 </div>
               </div>
-              <p class="qas-help">{{ t('notifyHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/通知推送服务配置" target="_blank">{{ t('notifyWiki') }}</a></p>
+              <p class="qas-help">{{ t('notifyHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/通知推送服务配置" target="_blank" rel="noopener noreferrer">{{ t('notifyWiki') }}</a></p>
               <div class="input-group mb-3">
                 <select class="form-select" v-model="newPushKey">
                   <option value="">{{ t('notifyChannel') }}</option>
@@ -165,7 +193,7 @@
               <div v-for="(value, key) in formData.push_config" :key="key" class="input-group mb-2">
                 <span class="input-group-text">{{ key }}</span>
                 <template v-if="(key == 'DEER_KEY' || key == 'PUSH_KEY')">
-                  <a type="button" class="btn btn-warning" target="_blank" href="https://sct.ftqq.com/r/13249" title="Server酱推荐计划"><i class="bi bi-award"></i></a>
+                  <a class="btn btn-warning" target="_blank" rel="noopener noreferrer" href="https://sct.ftqq.com/r/13249" title="Server酱推荐计划" aria-label="Server酱推荐计划"><i class="bi bi-award"></i></a>
                 </template>
                 <input type="text" v-model="formData.push_config[key]" class="form-control">
 
@@ -177,16 +205,14 @@
             <div class="qas-card" v-if="Object.keys(getAvailablePlugins(formData.plugins)).length">
               <div class="qas-card-head">
                 <h2><i class="bi bi-plug"></i> {{ t('plugins') }}</h2>
-                <a class="btn btn-sm btn-outline-secondary" href="https://github.com/Cp0204/quark-auto-save/wiki/插件配置" target="_blank">{{ t('pluginsWiki') }}</a>
+                <a class="btn btn-sm btn-outline-secondary" href="https://github.com/Cp0204/quark-auto-save/wiki/插件配置" target="_blank" rel="noopener noreferrer">{{ t('pluginsWiki') }}</a>
               </div>
               <p class="qas-help">{{ t('pluginsHelp') }}</p>
               <div v-for="(plugin, pluginName) in getAvailablePlugins(formData.plugins)" :key="pluginName">
                 <div class="row mb-0" style="display:flex; align-items:center;">
-                  <div data-bs-toggle="collapse" :data-bs-target="'#collapse_'+pluginName" aria-expanded="true" :aria-controls="'collapse_'+pluginName">
-                    <div class="btn w-100 text-start">
-                      <i class="bi bi-caret-right-fill"></i> <span>{{ pluginName }}</span>
-                    </div>
-                  </div>
+                  <button type="button" class="btn w-100 text-start qas-collapse-toggle" data-bs-toggle="collapse" :data-bs-target="'#collapse_'+pluginName" aria-expanded="false" :aria-controls="'collapse_'+pluginName">
+                    <i class="bi bi-caret-right-fill"></i> <span>{{ pluginName }}</span>
+                  </button>
                 </div>
                 <div class="collapse ms-3 mt-2" :id="'collapse_'+pluginName">
                   <template v-for="(value, key) in plugin">
@@ -215,7 +241,7 @@
                 <h2><i class="bi bi-magic"></i> {{ t('magic') }}</h2>
                 <button type="button" class="btn btn-outline-primary btn-sm" @click="addMagicRegex()">{{ t('add') }}</button>
               </div>
-              <p class="qas-help">{{ t('magicHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/正则处理教程#21-魔法匹配" target="_blank">{{ t('magicWiki') }}</a></p>
+              <p class="qas-help">{{ t('magicHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/正则处理教程#21-魔法匹配" target="_blank" rel="noopener noreferrer">{{ t('magicWiki') }}</a></p>
               <div v-for="(value, key) in formData.magic_regex" :key="key" class="mb-2">
                 <div class="input-group">
                   <span class="input-group-text">{{ t('magicName') }}</span>
@@ -233,7 +259,7 @@
             <div class="qas-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-link-45deg"></i> {{ t('api') }}</h2>
-                <a class="btn btn-sm btn-outline-secondary" href="https://github.com/Cp0204/quark-auto-save/wiki/API接口" target="_blank">{{ t('apiWiki') }}</a>
+                <a class="btn btn-sm btn-outline-secondary" href="https://github.com/Cp0204/quark-auto-save/wiki/API接口" target="_blank" rel="noopener noreferrer">{{ t('apiWiki') }}</a>
               </div>
               <p class="qas-help">{{ t('apiHelp') }}</p>
               <div class="input-group">
@@ -248,14 +274,12 @@
               </div>
               <p class="qas-help">{{ t('searchHelp') }}</p>
               <div class="row mb-0" style="display:flex; align-items:center;">
-                <div data-bs-toggle="collapse" data-bs-target="#collapse_cloudsaver" aria-expanded="true" aria-controls="collapse_cloudsaver">
-                  <div class="btn w-100 text-start">
+                <div class="qas-collapse-heading">
+                  <button type="button" class="btn w-100 text-start qas-collapse-toggle" data-bs-toggle="collapse" data-bs-target="#collapse_cloudsaver" aria-expanded="true" aria-controls="collapse_cloudsaver">
                     <i class="bi bi-caret-right-fill"></i> CloudSaver
-                    <span class="badge rounded-pill text-bg-light">
-                      <a href="https://github.com/Cp0204/quark-auto-save/wiki/CloudSaver搜索源" target="_blank">?</a>
-                    </span>
-                    <div class="text-muted small mt-1 ms-3">{{ t('cloudsaverHelp') }}</div>
-                  </div>
+                    <span class="text-muted small d-block mt-1 ms-3">{{ t('cloudsaverHelp') }}</span>
+                  </button>
+                  <a class="qas-collapse-help badge rounded-pill text-bg-light" href="https://github.com/Cp0204/quark-auto-save/wiki/CloudSaver搜索源" target="_blank" rel="noopener noreferrer" aria-label="CloudSaver documentation">?</a>
                 </div>
               </div>
               <div class="collapse show ms-3" id="collapse_cloudsaver">
@@ -285,14 +309,12 @@
                 </div>
               </div>
               <div class="row mb-0" style="display:flex; align-items:center;">
-                <div data-bs-toggle="collapse" data-bs-target="#collapse_pansou" aria-expanded="true" aria-controls="collapse_pansou">
-                  <div class="btn w-100 text-start">
+                <div class="qas-collapse-heading">
+                  <button type="button" class="btn w-100 text-start qas-collapse-toggle" data-bs-toggle="collapse" data-bs-target="#collapse_pansou" aria-expanded="true" aria-controls="collapse_pansou">
                     <i class="bi bi-caret-right-fill"></i> PanSou
-                    <span class="badge rounded-pill text-bg-light">
-                      <a href="https://github.com/fish2018/pansou" target="_blank">?</a>
-                    </span>
-                    <div class="text-muted small mt-1 ms-3">{{ t('pansouHelp') }}</div>
-                  </div>
+                    <span class="text-muted small d-block mt-1 ms-3">{{ t('pansouHelp') }}</span>
+                  </button>
+                  <a class="qas-collapse-help badge rounded-pill text-bg-light" href="https://github.com/fish2018/pansou" target="_blank" rel="noopener noreferrer" aria-label="PanSou documentation">?</a>
                 </div>
               </div>
               <div class="collapse show ms-3" id="collapse_pansou">
@@ -310,11 +332,18 @@
                 </div>
               </div>
             </div>
+            <div class="qas-config-savebar">
+              <button type="button" class="btn btn-primary" @click="saveConfig()"><i class="bi bi-floppy2-fill"></i> {{ t('saveChanges') }}</button>
+            </div>
           </div>
-          <div v-if="activeTab === 'tasklist'">
-            <div class="qas-card">
+          <div class="qas-task-view" v-if="activeTab === 'tasklist'">
+            <div class="qas-card qas-filter-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-list-task"></i> {{ t('tasks') }}</h2>
+                <div class="qas-toolbar-actions">
+                  <button type="button" class="btn btn-primary" @click="addTask()"><i class="bi bi-plus"></i> {{ t('addTask') }}</button>
+                  <button type="button" class="btn btn-outline-primary" @click="addTaskForClipboard()" :title="t('importClipboard')"><i class="bi bi-clipboard-plus"></i><span class="d-none d-sm-inline ms-1">{{ t('importClipboard') }}</span></button>
+                </div>
               </div>
               <div class="row">
                 <div class="col-lg-6 col-md-12 mb-2">
@@ -322,7 +351,7 @@
                   <div class="input-group">
                     <input type="text" class="form-control" v-model="taskNameFilter" :placeholder="t('filterNamePh')">
 
-                      <button type="button" class="btn btn-outline-secondary" @click="clearData('taskNameFilter')"><i class="bi bi-x-lg"></i></button>
+                      <button type="button" class="btn btn-outline-secondary" @click="clearData('taskNameFilter')" :aria-label="t('clear')"><i class="bi bi-x-lg"></i></button>
 
                   </div>
                 </div>
@@ -334,7 +363,7 @@
                       <option v-for="(dir, index) in taskDirOptions" :key="'dir'+index" :value="dir">{{ dir }}</option>
                     </select>
 
-                      <button type="button" class="btn btn-outline-secondary" @click="clearData('taskDirSelected')"><i class="bi bi-x-lg"></i></button>
+                      <button type="button" class="btn btn-outline-secondary" @click="clearData('taskDirSelected')" :aria-label="t('clear')"><i class="bi bi-x-lg"></i></button>
 
                   </div>
                 </div>
@@ -343,23 +372,23 @@
 
             <div v-for="(task, index) in formData.tasklist" :key="'task'+index" class="task qas-task mb-3">
               <template v-if="(taskDirSelected == '' || getParentDirectory(task.savepath) == taskDirSelected) && task.taskname.includes(taskNameFilter)">
-                <div class="row mb-0" style="align-items:center">
-                  <div class="col ps-0" data-bs-toggle="collapse" :data-bs-target="'#collapse_'+index" aria-expanded="true" :aria-controls="'collapse_'+index">
-                    <div class="btn w-100 text-start">
+                <div class="row qas-task-header mb-0" style="align-items:center">
+                  <div class="col ps-0 qas-task-title">
+                    <button type="button" class="btn w-100 text-start qas-task-toggle" @click="prepareEditor(task)" data-bs-toggle="collapse" :data-bs-target="'#collapse_'+index" aria-expanded="false" :aria-controls="'collapse_'+index">
                       <i class="bi bi-caret-right-fill"></i> #<span>{{ index+1 }}: {{ task.taskname }}</span>
                       <span class="qas-badge warn ms-2" v-if="task.shareurl_ban">{{ t('banned') }}</span>
-                    </div>
+                    </button>
                   </div>
-                  <div class="col-auto">
-                    <button type="button" class="btn btn-outline-primary btn-sm" @click="copyTaskToClipboard(index)" :title="t('copyTask')"><i class="bi bi-clipboard-check-fill"></i></button>
-                    <button class="btn btn-warning btn-sm" v-if="task.shareurl_ban" :title="task.shareurl_ban" disabled><i class="bi bi-exclamation-triangle-fill"></i></button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" @click="runScriptNow(index)" :title="t('runTask')" v-else><i class="bi bi-play-fill"></i></button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" @click="removeTask(index)" :title="t('deleteTask')"><i class="bi bi-trash3-fill"></i></button>
+                  <div class="col-auto qas-task-actions">
+                    <button type="button" class="btn btn-outline-primary btn-sm" @click="copyTaskToClipboard(index)" :title="t('copyTask')" :aria-label="t('copyTask')"><i class="bi bi-clipboard-check-fill"></i></button>
+                    <button type="button" class="btn btn-warning btn-sm" v-if="task.shareurl_ban" :title="task.shareurl_ban" :aria-label="task.shareurl_ban" disabled><i class="bi bi-exclamation-triangle-fill"></i></button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" @click="runScriptNow(index)" :title="t('runTask')" :aria-label="t('runTask')" v-else><i class="bi bi-play-fill"></i></button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @click="removeTask(index)" :title="t('deleteTask')" :aria-label="t('deleteTask')"><i class="bi bi-trash3-fill"></i></button>
                   </div>
                 </div>
-                <div class="collapse ms-3" :id="'collapse_'+index">
+                <div class="collapse qas-task-body" :id="'collapse_'+index">
                   <div class="alert alert-warning" role="alert" v-if="task.shareurl_ban">{{ task.shareurl_ban }}</div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-taskname">
                     <label class="col-sm-2 col-form-label">{{ t('taskName') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
@@ -372,7 +401,7 @@
                           <div v-for="(suggestion, sIndex) in smart_param.taskSuggestions.data" :key="suggestion.shareurl" class="dropdown-item cursor-pointer" @click.prevent="selectSuggestion(index, suggestion)" style="font-size: 12px;" :title="suggestion.content">
                             <span>{{ suggestion.verify === true ? '✅' : suggestion.verify === false ? '❌' : '❔' }}</span> {{ suggestion.taskname }}
                             <small class="text-muted">
-                              <a :href="suggestion.shareurl" target="_blank" @click.stop>{{ suggestion.shareurl }}</a>
+                              <a :href="suggestion.shareurl" target="_blank" rel="noopener noreferrer" @click.stop>{{ suggestion.shareurl }}</a>
                             </small>
                             <span class="badge bg-transparent border border-success text-success">{{ suggestion.source || t('netPublic') }}</span>
                             <span class="badge bg-transparent border border-info text-info">{{ suggestion.channel }}</span>
@@ -380,45 +409,45 @@
                           </div>
                         </div>
                         <template :title="t('deepSearch')">
-                          <button class="btn btn-primary" type="button" @click="searchSuggestions(index, task.taskname)">
+                          <button class="btn btn-primary" type="button" @click="searchSuggestions(index, task.taskname)" :aria-label="t('deepSearch')">
                             <i v-if="smart_param.isSearching && smart_param.index === index" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>
                             <i v-else class="bi bi-search-heart"></i>
                           </button>
                           <div class="input-group-text" :title="t('googleSearch')">
-                            <a target="_blank" :href="`https://www.google.com/search?q=%22pan.quark.cn/s%22+${task.taskname}`"><i class="bi bi-google"></i></a>
+                            <a target="_blank" rel="noopener noreferrer" :href="`https://www.google.com/search?q=%22pan.quark.cn/s%22+${task.taskname}`" :aria-label="t('googleSearch')"><i class="bi bi-google"></i></a>
                           </div>
                         </template>
                       </div>
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-share">
                     <label class="col-sm-2 col-form-label">{{ t('shareUrl') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" name="shareurl[]" class="form-control" v-model="task.shareurl" :placeholder="t('required')" @blur="changeShareurl(task)">
                         <template v-if="task.shareurl">
-                          <button type="button" class="btn btn-outline-secondary" @click="fileSelect.selectDir=true;fileSelect.switchShare=false;fileSelect.previewRegex=false;fileSelect.sortBy='file_name';fileSelect.sortOrder='desc';showShareSelect(index)" :title="t('selectFolder')"><i class="bi bi-folder"></i></button>
+                          <button type="button" class="btn btn-outline-secondary" @click="fileSelect.selectDir=true;fileSelect.switchShare=false;fileSelect.previewRegex=false;fileSelect.sortBy='file_name';fileSelect.sortOrder='desc';showShareSelect(index)" :title="t('selectFolder')" :aria-label="t('selectFolder')"><i class="bi bi-folder"></i></button>
                           <div class="input-group-text">
-                            <a target="_blank" :href="task.shareurl" :title="t('openLink')"><i class="bi bi-box-arrow-up-right"></i></a>
+                            <a target="_blank" rel="noopener noreferrer" :href="task.shareurl" :title="t('openLink')" :aria-label="t('openLink')"><i class="bi bi-box-arrow-up-right"></i></a>
                           </div>
                         </template>
                       </div>
                       <small class="text-muted">{{ t('helpShare') }}</small>
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-savepath">
                     <label class="col-sm-2 col-form-label">{{ t('savePath') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <input type="text" name="savepath[]" class="form-control" v-model="task.savepath" :placeholder="t('required')" @focus="focusTaskname(index, task)">
 
-                          <button class="btn btn-secondary" type="button" v-if="smart_param.savepath && smart_param.index == index && task.savepath != smart_param.origin_savepath" @click="task.savepath = smart_param.origin_savepath"><i class="bi bi-reply"></i></button>
+                          <button class="btn btn-secondary" type="button" v-if="smart_param.savepath && smart_param.index == index && task.savepath != smart_param.origin_savepath" @click="task.savepath = smart_param.origin_savepath" :aria-label="t('restore')"><i class="bi bi-reply"></i></button>
                           <button class="btn btn-outline-secondary" type="button" @click="fileSelect.sortBy='file_name';fileSelect.sortOrder='asc';showSavepathSelect(index)">{{ t('select') }}</button>
 
                       </div>
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-rule">
                     <label class="col-sm-2 col-form-label">{{ t('saveRule') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
@@ -439,7 +468,7 @@
                       </datalist>
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-start">
                     <label class="col-sm-2 col-form-label">{{ t('startFile') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
@@ -451,7 +480,7 @@
                       <small class="text-muted">{{ t('helpStartfid') }}</small>
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-update">
                     <label class="col-sm-2 col-form-label">{{ t('updateDir') }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
@@ -465,13 +494,13 @@
                       <small class="text-muted">{{ t('helpSubdir') }}</small>
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-enddate">
                     <label class="col-sm-2 col-form-label">{{ t('endDate') }}</label>
                     <div class="col-sm-10">
                       <input type="date" name="enddate[]" class="form-control" v-model="task.enddate" :placeholder="t('optional')">
                     </div>
                   </div>
-                  <div class="row mb-3">
+                  <div class="row mb-3 qas-field qas-field-week">
                     <label class="col-sm-2 col-form-label">{{ t('runWeek') }}</label>
                     <div class="col-sm-10 col-form-label">
                       <div class="form-check form-check-inline" :title="t('helpWeek')">
@@ -485,53 +514,65 @@
                       <div><small class="text-muted">{{ t('helpWeek') }}</small></div>
                     </div>
                   </div>
-                  <div class="row mb-3" v-if="Object.keys(getAvailablePlugins(formData.plugins)).length">
+                  <div class="row mb-3 qas-field qas-field-plugin" v-if="Object.keys(getAvailablePlugins(formData.plugins)).length">
                     <label class="col-sm-2 col-form-label">{{ t('pluginOpts') }}</label>
                     <div class="col-sm-10">
-                      <v-jsoneditor v-model="task.addition" :options="{mode:'tree'}" :plus="false" height="180px"></v-jsoneditor>
+                      <v-jsoneditor v-if="editorReadyTasks.includes(task)" v-model="task.addition" :options="{mode:'tree'}" :plus="false" height="180px" :error-text="t('jsonEditorLoadFailed')" :retry-text="t('retry')"></v-jsoneditor>
                       <small class="text-muted">{{ t('helpPluginTask') }}</small>
                     </div>
+                  </div>
+                  <div class="qas-task-savebar">
+                    <button type="button" class="btn btn-primary" @click="saveConfig()"><i class="bi bi-floppy2-fill"></i> {{ t('saveChanges') }}</button>
                   </div>
                 </div>
               </template>
             </div>
-            <div class="row mt-4 mb-5">
-              <div class="col-sm-12 text-center">
-                <div class="btn-group" role="group">
-                  <button type="button" class="btn btn-primary" @click="addTask()"><i class="bi bi-plus"></i> {{ t('addTask') }}</button>
-                  <button type="button" class="btn btn-primary" @click="addTaskForClipboard()" :title="t('importClipboard')"><i class="bi bi-clipboard-plus"></i></button>
-                </div>
-              </div>
-            </div>
           </div>
 
-          <div class="bottom-buttons">
-            <button class="btn btn-success" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('saveCtrl')"><i class="bi bi-floppy2-fill"></i></button>
-            <button type="button" class="btn btn-primary" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('runCtrl')" @click="runScriptNow()"><i class="bi bi-play-fill"></i></button>
-            <button type="button" class="btn btn-info" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('scrollTop')" @click="scrollToX(0)" @dblclick="scrollToX()"><i class="bi bi-chevron-bar-up"></i></button>
+          <div class="bottom-buttons" :class="{ 'qas-config-mode': activeTab === 'config' }">
+            <button class="btn btn-success qas-global-save" type="submit" :aria-label="t('saveCtrl')" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('saveCtrl')"><i class="bi bi-floppy2-fill"></i></button>
+            <button type="button" class="btn btn-primary" :aria-label="t('runCtrl')" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('runCtrl')" @click="runScriptNow()"><i class="bi bi-play-fill"></i></button>
+            <button type="button" class="btn btn-info" :aria-label="t('scrollTop')" data-bs-toggle="tooltip" data-bs-placement="top" :title="t('scrollTop')" @click="scrollToX(0)" @dblclick="scrollToX()"><i class="bi bi-chevron-bar-up"></i></button>
           </div>
         </form>
       </main>
     </div>
 
+    <nav class="qas-mobile-nav" aria-label="Mobile navigation">
+      <button type="button" class="qas-mobile-nav-item" :class="{active: activeTab === 'tasklist'}" @click="changeTab('tasklist')">
+        <i class="bi bi-list-task"></i><span>{{ t('navTasks') }}</span>
+      </button>
+      <button type="button" class="qas-mobile-nav-item" :class="{active: activeTab === 'config'}" @click="changeTab('config')">
+        <i class="bi bi-gear-fill"></i><span>{{ t('navConfig') }}</span>
+      </button>
+      <button type="button" class="qas-mobile-nav-item" @click="openLog()">
+        <i class="bi bi-terminal"></i><span>{{ t('runLog') }}</span>
+      </button>
+    </nav>
+
     <div class="modal" tabindex="-1" id="logModal">
-      <div class="modal-dialog">
+      <div class="modal-dialog qas-log-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title"><b>{{ t('runLog') }}</b>
+            <h5 class="modal-title qas-log-title"><b>{{ t('runLog') }}</b>
+              <span v-if="!modalLoading && run_log" class="qas-badge ok ms-2">{{ t('runComplete') }}</span>
               <div v-if="modalLoading" class="spinner-border spinner-border-sm m-1" role="status"></div>
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <pre>{{ run_log }}</pre>
+            <pre class="qas-log-console">{{ run_log }}</pre>
+          </div>
+          <div class="modal-footer qas-log-footer">
+            <button type="button" class="btn btn-outline-primary" @click="copyText(run_log, () => showToast(t('copyLog'), 'success'))"><i class="bi bi-clipboard"></i> {{ t('copyLog') }}</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ t('close') }}</button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="modal" tabindex="-1" id="fileSelectModal">
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog modal-lg qas-file-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
@@ -546,7 +587,7 @@
             <div class="mb-3 row" v-if="fileSelect.switchShare">
               <div class="col-sm-8">
                 <div><b>{{ t('name') }}：</b><span :title="fileSelect.share.content">{{ fileSelect.share.taskname }}</span></div>
-                <div><b>{{ t('link') }}：</b><a :href="fileSelect.share.shareurl" target="_blank" @click.stop>{{ fileSelect.share.shareurl }}</a></div>
+                <div><b>{{ t('link') }}：</b><a :href="fileSelect.share.shareurl" target="_blank" rel="noopener noreferrer" @click.stop>{{ fileSelect.share.shareurl }}</a></div>
                 <div>
                   <b>{{ t('source') }}：</b>
                   <span class="badge bg-transparent border border-success text-success">{{ fileSelect.share.source || t('netPublic') }}</span>
@@ -580,7 +621,7 @@
                   </li>
                 </ol>
               </nav>
-              <table class="table table-hover table-sm">
+              <div class="qas-file-table-wrap"><table class="table table-hover table-sm qas-file-table">
                 <thead>
                   <tr>
                     <th scope="col" class="cursor-pointer" @click="sortFileList('file_name')">
@@ -600,17 +641,17 @@
                 </thead>
                 <tbody>
                   <tr v-for="(file, key) in fileSelect.fileList" :key="key" @click="fileSelect.selectDir ? (file.dir ? navigateTo(file.fid, file.file_name) : null) : selectStartFid(file.fid)" :class="{'cursor-pointer': fileSelect.selectDir ? file.dir : true}">
-                    <td><i class="bi me-1" :class="file.dir ? 'bi-folder-fill text-warning' : 'bi-file-earmark'"></i>{{file.file_name}}</td>
-                    <td v-if="fileSelect.selectShare" :class="file.file_name_re ? 'text-success' : file.file_name_saved ? 'text-muted' : 'text-danger'">{{file.file_name_re || file.file_name_saved || '&times;'}}</td>
+                    <td :data-label="t('fileName')"><i class="bi me-1" :class="file.dir ? 'bi-folder-fill text-warning' : 'bi-file-earmark'"></i>{{file.file_name}}</td>
+                    <td v-if="fileSelect.selectShare" :data-label="t('regexPreview')" :class="file.file_name_re ? 'text-success' : file.file_name_saved ? 'text-muted' : 'text-danger'">{{file.file_name_re || file.file_name_saved || '&times;'}}</td>
                     <template v-if="!fileSelect.previewRegex">
-                      <td v-if="file.dir">{{ file.include_items }}{{ t('items') }}</td>
-                      <td v-else>{{ formatSize(file.size) }}</td>
-                      <td>{{ formatTs(file.updated_at) }}</td>
-                      <td v-if="!fileSelect.selectShare"><a class="cursor-pointer text-muted" @click.stop.prevent="deleteFile(file.fid, file.file_name, file.dir)">{{ t('delete') }}</a></td>
+                      <td v-if="file.dir" :data-label="t('items')">{{ file.include_items }}{{ t('items') }}</td>
+                      <td v-else :data-label="t('size')">{{ formatSize(file.size) }}</td>
+                      <td :data-label="t('mtime')">{{ formatTs(file.updated_at) }}</td>
+                      <td v-if="!fileSelect.selectShare" class="qas-file-action" :data-label="t('action')"><a class="cursor-pointer text-muted" @click.stop.prevent="deleteFile(file.fid, file.file_name, file.dir)">{{ t('delete') }}</a></td>
                     </template>
                   </tr>
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </div>
           <div class="modal-footer" v-if="fileSelect.selectDir && !fileSelect.previewRegex">
@@ -639,22 +680,43 @@
       props: {
         modelValue: { default: () => ({}) },
         options: { type: Object, default: () => ({}) },
-        height: { type: String, default: "180px" }
+        height: { type: String, default: "180px" },
+        errorText: { type: String, default: "Plugin editor failed to load." },
+        retryText: { type: String, default: "Retry" }
       },
       emits: ["update:modelValue"],
-      data() { return { silent: false }; },
+      data() { return { editor: null, editorError: false, silent: false }; },
       mounted() {
-        this.editor = new JSONEditor(this.$refs.ed, Object.assign({
-          mode: "tree",
-          mainMenuBar: false,
-          navigationBar: false,
-          statusBar: false,
-          onChangeJSON: (json) => {
-            if (this.silent) return;
-            this.$emit("update:modelValue", json);
+        this.initEditor();
+      },
+      methods: {
+        async initEditor() {
+          if (this.editor) {
+            this.editor.destroy();
+            this.editor = null;
           }
-        }, this.options));
-        this.editor.set(this.modelValue || {});
+          this.editorError = false;
+          try {
+            await qasLoadJsonEditor();
+            this.editor = new JSONEditor(this.$refs.ed, Object.assign({
+              mode: "tree",
+              mainMenuBar: false,
+              navigationBar: false,
+              statusBar: false,
+              onChangeJSON: (json) => {
+                if (this.silent) return;
+                this.$emit("update:modelValue", json);
+              }
+            }, this.options));
+            this.editor.set(this.modelValue || {});
+          } catch (error) {
+            this.editorError = true;
+            console.error("Failed to load JSONEditor", error);
+          }
+        },
+        retry() {
+          this.initEditor();
+        }
       },
       watch: {
         modelValue: {
@@ -673,15 +735,15 @@
       beforeUnmount() {
         if (this.editor) this.editor.destroy();
       },
-      template: '<div ref="ed" class="qas-jsoneditor" :style="{height: height}"></div>'
+      template: `<div class="qas-jsoneditor-wrap"><div ref="ed" class="qas-jsoneditor" :class="{ 'd-none': editorError }" :style="{height: height}"></div><div v-if="editorError" class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mt-2 mb-0" role="alert"><span>{{ errorText }}</span><button type="button" class="btn btn-sm btn-outline-warning" @click="retry">{{ retryText }}</button></div></div>`
     };
 
     Vue.createApp({
       data() {
         return {
-        version: "[[ version ]]",
-        versionTips: "",
-        plugin_flags: "[[ plugin_flags ]]",
+        version: [[ version|tojson ]],
+        latestVersion: "",
+        plugin_flags: [[ plugin_flags|tojson ]],
         uiLang: localStorage.getItem('qas.lang') || 'zh',
         uiTheme: localStorage.getItem('qas.theme') || 'light',
         newPushKey: "",
@@ -699,6 +761,7 @@
           },
         },
         toasts: [],
+        editorReadyTasks: [],
         newTask: {
           taskname: "",
           shareurl: "",
@@ -803,21 +866,24 @@
           window.QAS_applyHtmlLang(this.uiLang);
           document.title = this.t('appName');
         },
-        changeTab(tab) {
-          this.activeTab = tab;
-          if (window.innerWidth <= 768) {
-            this.toggleCollapse('sidebarMenu');
+        closeMobileSidebar() {
+          const sidebar = document.getElementById('sidebarMenu');
+          if (window.innerWidth < 992 && sidebar?.classList.contains('show')) {
+            bootstrap.Collapse.getOrCreateInstance(sidebar).hide();
           }
         },
+        changeTab(tab) {
+          this.activeTab = tab;
+          this.closeMobileSidebar();
+        },
         checkNewVersion() {
-          this.versionTips = this.version;
+          this.latestVersion = "";
           axios.get('https://api.github.com/repos/Cp0204/quark-auto-save/tags')
             .then(response => {
-              latestVersion = response.data[0].name;
+              const latestVersion = response.data?.[0]?.name;
+              if (!latestVersion) return;
               console.log(`check version: current ${this.version} latest ${latestVersion}`);
-              if (latestVersion != this.version) {
-                this.versionTips += ` <sup><span class="position-absolute badge rounded-pill text-bg-danger">${latestVersion}</span></sup>`;
-              }
+              this.latestVersion = latestVersion;
             })
             .catch(error => {
               console.error('Error:', error);
@@ -934,9 +1000,14 @@
             }
           }
           this.formData.tasklist.push(newTask);
+          this.editorReadyTasks.push(this.formData.tasklist[this.formData.tasklist.length - 1]);
           setTimeout(() => {
             this.showCollapse('collapse_' + (this.formData.tasklist.length - 1), true);
           }, 1);
+        },
+        prepareEditor(task) {
+          if (!this.editorReadyTasks.includes(task))
+            this.editorReadyTasks.push(task);
         },
         focusTaskname(index, task) {
           this.smart_param.index = index
@@ -961,8 +1032,11 @@
             task.savepath = this.smart_param.savepath.replace('TASKNAME', task.taskname);
         },
         removeTask(index) {
-          if (confirm(this.t('confirmDeleteTask', { n: index + 1, name: this.formData.tasklist[index].taskname })))
+          const task = this.formData.tasklist[index];
+          if (confirm(this.t('confirmDeleteTask', { n: index + 1, name: task.taskname }))) {
+            this.editorReadyTasks = this.editorReadyTasks.filter(item => item !== task);
             this.formData.tasklist.splice(index, 1);
+          }
         },
         changeShareurl(task) {
           if (!task.shareurl)
@@ -1023,7 +1097,7 @@
               return;
             }
           }
-          this.toggleModal('logModal');
+          this.openLog();
           this.modalLoading = true;
           this.run_log = '';
           try {
@@ -1037,39 +1111,59 @@
             if (!response.ok) {
               throw new Error(`HTTP error! Status: ${response.status}`);
             }
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('text/event-stream')) {
+              const payload = await response.json().catch(() => ({}));
+              this.modalLoading = false;
+              this.showToast(this.tMsg(payload.message || this.t('networkError')), 'error');
+              return;
+            }
+            if (!response.body) {
+              throw new Error('Empty response stream');
+            }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let partialData = '';
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                break;
+            let receivedDone = false;
+            const consumeLine = (line) => {
+              if (!line.startsWith('data:')) {
+                console.warn('Unexpected line:', line);
+                return false;
               }
-              partialData += decoder.decode(value);
-              const lines = partialData.split('\n').filter(line => line.trim() !== '');
+              const eventData = line.substring(5).trim();
+              if (eventData === '[DONE]') {
+                return true;
+              }
+              this.run_log += eventData + '\n';
+              this.$nextTick(() => {
+                const modalBody = document.querySelector('#logModal .modal-body');
+                if (modalBody) modalBody.scrollTop = modalBody.scrollHeight;
+              });
+              return false;
+            };
+            while (!receivedDone) {
+              const { done, value } = await reader.read();
+              partialData += decoder.decode(value || new Uint8Array(), { stream: !done });
+              const lines = partialData.split(/\r?\n/);
+              partialData = lines.pop() || '';
               for (const line of lines) {
-                if (line.startsWith('data:')) {
-                  const eventData = line.substring(5).trim();
-                  if (eventData === '[DONE]') {
-                    this.modalLoading = false;
-                    if (task_index == null) {
-                      this.fetchData();
-                    }
-                    break;
-                  }
-                  this.run_log += eventData + '\n';
-                  this.$nextTick(() => {
-                    const modalBody = document.querySelector('.modal-body');
-                    modalBody.scrollTop = modalBody.scrollHeight;
-                  });
-                } else {
-                  console.warn('Unexpected line:', line);
+                if (line.trim() && consumeLine(line)) {
+                  receivedDone = true;
+                  break;
                 }
               }
-              partialData = '';
+              if (done) {
+                if (!receivedDone && partialData.trim()) receivedDone = consumeLine(partialData);
+                break;
+              }
+            }
+            this.modalLoading = false;
+            if (receivedDone && task_index == null) {
+              this.fetchData();
             }
           } catch (error) {
             this.modalLoading = false;
+            this.showToast(this.t('networkError'), 'error');
             console.error('Error:', error);
           }
         },
@@ -1362,14 +1456,21 @@
             task.replace = item.replace;
           }
         },
-        copyText(text, callback = () => { }) {
+        async copyText(text, callback = () => { }) {
           if (!text) {
             console.error('No text to copy');
-            return;
+            return false;
           }
+          let copied = false;
           if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text);
-          } else {
+            try {
+              await navigator.clipboard.writeText(text);
+              copied = true;
+            } catch (error) {
+              console.warn('Clipboard API failed, falling back:', error);
+            }
+          }
+          if (!copied) {
             const textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.style.position = 'fixed';
@@ -1379,10 +1480,16 @@
             document.body.appendChild(textarea);
             textarea.select();
             textarea.setSelectionRange(0, 99999);
-            document.execCommand("copy");
-            document.body.removeChild(textarea);
+            try {
+              copied = document.execCommand("copy");
+            } catch (error) {
+              console.error('Fallback copy failed:', error);
+            } finally {
+              document.body.removeChild(textarea);
+            }
           }
-          callback()
+          if (copied) callback();
+          return copied;
         },
         copyTaskToClipboard(index) {
           const task = { ...this.formData.tasklist[index] };
@@ -1404,6 +1511,7 @@
               let task = JSON.parse(text);
               task = { ...this.newTask, ...task };
               this.formData.tasklist.push(task);
+              this.editorReadyTasks.push(this.formData.tasklist[this.formData.tasklist.length - 1]);
               this.showToast(this.t('imported'), "success");
               setTimeout(() => {
                 this.showCollapse('collapse_' + (this.formData.tasklist.length - 1), true);
@@ -1435,6 +1543,10 @@
           document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
             bootstrap.Tooltip.getOrCreateInstance(el);
           });
+        },
+        openLog() {
+          this.closeMobileSidebar();
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal')).show();
         },
         toggleModal(id) {
           bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).toggle();
