@@ -83,6 +83,7 @@ config_data = {}
 task_plugins_config_default = {}
 CONFIG_LOCK = threading.RLock()
 MCP_RUNS = {}
+MCP_ACTIVE_TASKS = {}
 MCP_RUNS_LOCK = threading.RLock()
 LOG_BUFFER = deque(maxlen=2000)
 LOG_BUFFER_LOCK = threading.Lock()
@@ -291,10 +292,14 @@ class QASMCPBackend:
     @staticmethod
     def _ensure_task_ids_locked():
         changed = False
+        used_ids = set()
         for task in config_data.setdefault("tasklist", []):
-            if not isinstance(task.get("id"), str) or not task["id"].strip():
-                task["id"] = uuid.uuid4().hex
+            task_id = task.get("id") if isinstance(task, dict) else None
+            if not isinstance(task_id, str) or not task_id.strip() or task_id in used_ids:
+                task_id = uuid.uuid4().hex
+                task["id"] = task_id
                 changed = True
+            used_ids.add(task_id)
         return changed
 
     @staticmethod
@@ -590,6 +595,20 @@ def _terminate_run_after_timeout(run_id, process):
         process.kill()
 
 
+def _task_run_keys(tasklist):
+    keys = []
+    for index, task in enumerate(tasklist):
+        task_id = str(task.get("id") or "").strip() if isinstance(task, dict) else ""
+        keys.append(f"task:{task_id or f'index:{index}'}")
+    return tuple(dict.fromkeys(keys))
+
+
+def _release_mcp_tasks_locked(run_id, record):
+    for task_key in record.get("task_keys", ()):
+        if MCP_ACTIVE_TASKS.get(task_key) == run_id:
+            MCP_ACTIVE_TASKS.pop(task_key, None)
+
+
 def _collect_mcp_run(run_id, process):
     try:
         for line in iter(process.stdout.readline, ""):
@@ -609,21 +628,25 @@ def _collect_mcp_run(run_id, process):
                 record["returncode"] = returncode
                 record["status"] = "timed_out" if record.get("timed_out") else ("completed" if returncode == 0 else "failed")
                 record["finished_at"] = datetime.now(timezone.utc).isoformat()
+                _release_mcp_tasks_locked(run_id, record)
     except Exception as exc:
-        logging.exception("MCP run %s collector failed", run_id, extra={"mcp_run_id": run_id})
+        logging.error("MCP run %s collector failed: %s", run_id, _redact_text(exc), extra={"mcp_run_id": run_id})
         with MCP_RUNS_LOCK:
             record = MCP_RUNS.get(run_id)
             if record:
                 record["status"] = "failed"
                 record["error"] = _redact_text(exc)
                 record["finished_at"] = datetime.now(timezone.utc).isoformat()
+                _release_mcp_tasks_locked(run_id, record)
     finally:
         if process.stdout:
             process.stdout.close()
         with MCP_RUNS_LOCK:
             record = MCP_RUNS.get(run_id)
-            if record and record.get("done_event"):
-                record["done_event"].set()
+            if record:
+                _release_mcp_tasks_locked(run_id, record)
+                if record.get("done_event"):
+                    record["done_event"].set()
             _trim_mcp_runs_locked({run_id})
 
 
@@ -640,20 +663,36 @@ def _trim_mcp_runs_locked(protected_ids=()):
 
 def start_mcp_run(tasklist):
     run_id = uuid.uuid4().hex
+    task_keys = _task_run_keys(tasklist)
+    with MCP_RUNS_LOCK:
+        conflicts = sorted({MCP_ACTIVE_TASKS[key] for key in task_keys if key in MCP_ACTIVE_TASKS})
+        if conflicts:
+            raise ValueError("任务正在运行: " + ", ".join(conflicts))
+        for task_key in task_keys:
+            MCP_ACTIVE_TASKS[task_key] = run_id
+
     process_env = os.environ.copy()
     process_env["PYTHONIOENCODING"] = "utf-8"
     process_env["TASKLIST"] = json.dumps(tasklist, ensure_ascii=False)
     command = [PYTHON_PATH, "-u", SCRIPT_PATH, CONFIG_PATH]
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-        env=process_env,
-    )
+    try:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=process_env,
+        )
+    except Exception:
+        with MCP_RUNS_LOCK:
+            for task_key in task_keys:
+                if MCP_ACTIVE_TASKS.get(task_key) == run_id:
+                    MCP_ACTIVE_TASKS.pop(task_key, None)
+        raise
+
     record = {
         "run_id": run_id,
         "status": "running",
@@ -662,6 +701,7 @@ def start_mcp_run(tasklist):
         "returncode": None,
         "timed_out": False,
         "task_count": len(tasklist),
+        "task_keys": task_keys,
         "output": deque(maxlen=200),
         "done_event": threading.Event(),
         "process": process,
@@ -942,7 +982,7 @@ def mcp_endpoint():
     except MCPTransportError as exc:
         return _mcp_http_error(exc.status, exc.message)
     if response_data is None:
-        return Response(status=202)
+        return _mcp_add_cors(Response(status=202))
     response_headers = {
         "Cache-Control": "no-cache",
         "MCP-Protocol-Version": negotiated or protocol_version or DEFAULT_PROTOCOL_VERSION,

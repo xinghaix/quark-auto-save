@@ -53,7 +53,8 @@ def demo():
         fake_script = Path(directory) / "fake_run.py"
         fake_script.write_text(
             "print('mcp-run-ok PUSH_KEY=child-secret-value-123456')\n"
-            "print('{\"apiKey\": \"camel-child-secret-123456\", \"BARK_PUSH\": \"bark-child-secret-123456\"}')\n",
+            "print('{\"apiKey\": \"camel-child-secret-123456\", \"BARK_PUSH\": \"bark-child-secret-123456\"}')\n"
+            "import time; time.sleep(0.5)\n",
             encoding="utf-8",
         )
         os.environ["SCRIPT_PATH"] = str(fake_script)
@@ -106,8 +107,13 @@ def demo():
         session_headers = {**auth, "Mcp-Session-Id": session_id, "MCP-Protocol-Version": "2025-06-18"}
         bad_origin = client.post("/mcp", json=rpc("ping", 99), headers={**session_headers, "Origin": "https://evil.example"})
         assert bad_origin.status_code == 403
-        notification = client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"}, headers=session_headers)
+        notification = client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+            headers={**session_headers, "Origin": "https://client.example"},
+        )
         assert notification.status_code == 202
+        assert notification.headers["Access-Control-Allow-Origin"] == "https://client.example"
 
         listed = client.post("/mcp", json=rpc("tools/list", 2), headers=session_headers)
         assert listed.status_code == 200
@@ -159,6 +165,15 @@ def demo():
         assert called.json["result"]["structuredContent"]["count"] == 1
 
         qas_run.config_data["mcp"]["permissions"]["tasks.run"] = True
+        first_run = qas_run.mcp_backend.run_tasks({})
+        try:
+            qas_run.mcp_backend.run_tasks({})
+        except ValueError as exc:
+            assert "运行" in str(exc)
+        else:
+            raise AssertionError("the same task must not run concurrently")
+        assert qas_run.wait_mcp_run(first_run["run_id"])["status"] == "completed"
+
         run_call = client.post("/mcp", json=rpc("tools/call", 5, {
             "name": "qas_tasks_run",
             "arguments": {"wait": True},
