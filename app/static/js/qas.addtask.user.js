@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         QAS一键推送助手
-// @namespace    https://github.com/Cp0204/quark-auto-save
+// @namespace    https://github.com/xinghaix/quark-auto-save
 // @license      AGPL
 // @version      0.6
 // @description  在夸克网盘分享页面添加推送到 QAS 的按钮
@@ -11,8 +11,8 @@
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
 // @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
-// @downloadURL  https://cdn.jsdelivr.net/gh/Cp0204/quark-auto-save@refs/heads/main/app/static/js/qas.addtask.user.js
-// @updateURL    https://cdn.jsdelivr.net/gh/Cp0204/quark-auto-save@refs/heads/main/app/static/js/qas.addtask.user.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/xinghaix/quark-auto-save@refs/heads/main/app/static/js/qas.addtask.user.js
+// @updateURL    https://cdn.jsdelivr.net/gh/xinghaix/quark-auto-save@refs/heads/main/app/static/js/qas.addtask.user.js
 // ==/UserScript==
 
 (function () {

@@ -963,7 +963,7 @@
         },
         checkNewVersion() {
           this.latestVersion = "";
-          axios.get('https://api.github.com/repos/Cp0204/quark-auto-save/tags')
+          axios.get('https://api.github.com/repos/xinghaix/quark-auto-save/tags')
             .then(response => {
               const latestVersion = response.data?.[0]?.name;
               if (!latestVersion) return;

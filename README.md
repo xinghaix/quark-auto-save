@@ -12,23 +12,22 @@
 
 > **本仓库说明（xinghaix fork）**
 >
-> 基于上游 [Cp0204/quark-auto-save](https://github.com/Cp0204/quark-auto-save) 的 `main` 二次优化，协议仍为 AGPL-3.0。
-> WebUI：Vue 3.5 + Bootstrap 5.3，现代化卡片布局、浅色/深色/海洋/日落四套主题、中英界面（保存在浏览器本地）。转存/签到/插件逻辑与上游一致。
+> 本仓库是 [xinghaix/quark-auto-save](https://github.com/xinghaix/quark-auto-save) 的 Fork，基于上游 [Cp0204/quark-auto-save](https://github.com/Cp0204/quark-auto-save) 的 `main` 二次优化，协议仍为 AGPL-3.0。
+> 与上游相比，本 fork 已同步现代化 WebUI（Vue 3.5 + Bootstrap 5.3、浅色/深色/海洋/日落主题、中英界面）、原生 MCP 远程管理和 Fork 专用 GHCR 发布流程；转存/签到/插件逻辑与上游保持一致。
 > 主题与语言不写入服务器配置；Cookie、推送密钥等仍只存在你自己的 `config` 目录。
-> 要用本 fork 的界面，请从此仓库自行构建镜像；`cp0204/quark-auto-save` 官方镜像仍是上游 UI。
+> 本 fork 镜像发布在 `ghcr.io/xinghaix/quark-auto-save`；`cp0204/quark-auto-save` 官方镜像仍是上游版本。上游 Wiki 继续作为通用使用文档，本 fork 暂未复制 Wiki。
 
 
 
 [![zread](https://img.shields.io/badge/Ask_AI-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/Cp0204/quark-auto-save) [![skill](https://img.shields.io/badge/🦞-ClawHub%20Skill-orange?logo=openclaw)](https://clawhub.ai/Cp0204/quark-auto-save)
 
-[![wiki][wiki-image]][wiki-url] [![github releases][gitHub-releases-image]][github-url] [![docker pulls][docker-pulls-image]][docker-url] [![docker image size][docker-image-size-image]][docker-url]
+[![wiki][wiki-image]][wiki-url] [![github releases][gitHub-releases-image]][github-url] [![GHCR image][ghcr-image]][docker-url]
 
 [wiki-image]: https://img.shields.io/badge/wiki-Documents-green?logo=github
-[gitHub-releases-image]: https://img.shields.io/github/v/release/Cp0204/quark-auto-save?logo=github
-[docker-pulls-image]: https://img.shields.io/docker/pulls/cp0204/quark-auto-save?logo=docker&&logoColor=white
-[docker-image-size-image]: https://img.shields.io/docker/image-size/cp0204/quark-auto-save?logo=docker&&logoColor=white
-[github-url]: https://github.com/Cp0204/quark-auto-save
-[docker-url]: https://hub.docker.com/r/cp0204/quark-auto-save
+[gitHub-releases-image]: https://img.shields.io/github/v/release/xinghaix/quark-auto-save?logo=github
+[ghcr-image]: https://img.shields.io/badge/GHCR-quark--auto--save-2496ED?logo=docker&logoColor=white
+[github-url]: https://github.com/xinghaix/quark-auto-save
+[docker-url]: https://github.com/xinghaix/quark-auto-save/pkgs/container/quark-auto-save
 [wiki-url]: https://github.com/Cp0204/quark-auto-save/wiki
 
 ![run_log](img/run_log.png)
@@ -39,7 +38,7 @@
 > ⛔️⛔️⛔️ 注意！资源不会每时每刻更新，**严禁设定过高的定时运行频率！** 以免账号风控和给夸克服务器造成不必要的压力。雪山崩塌，每一片雪花都有责任！
 
 > [!NOTE]
-> 开发者≠客服，开源免费≠帮你解决使用问题；本项目 Wiki 已经相对完善，遇到问题请先翻阅 Issues 和 Wiki ，请勿盲目发问。
+> 开发者≠客服，开源免费≠帮你解决使用问题；上游 Wiki 已经相对完善，遇到问题请先翻阅 Issues 和 Wiki ，请勿盲目发问。
 
 ## 功能
 
@@ -80,20 +79,28 @@
 
 ### Docker 部署
 
-Docker 部署提供 WebUI 进行管理配置，部署命令：
+本 fork 的镜像发布到 GHCR。当前包如果是私有的，首次拉取前使用拥有 `read:packages` 权限的 GitHub PAT 登录；不要把 PAT 写进仓库：
 
 ```shell
+echo "$GHCR_PAT" | docker login ghcr.io -u <GitHub用户名> --password-stdin
+```
+
+Docker 部署提供 WebUI 进行管理配置：
+
+```shell
+# 5005:5005 中前一个端口可改，后一个端口固定
+# :latest 可替换为 :v0.8.8 固定版本
+
 docker run -d \
   --name quark-auto-save \
-  -p 5005:5005 \ # 映射端口，:前的可以改，即部署后访问的端口，:后的不可改
+  -p 5005:5005 \
   -e WEBUI_USERNAME=admin \
   -e WEBUI_PASSWORD=admin123 \
-  -v ./quark-auto-save/config:/app/config \ # 必须，配置持久化
-  -v ./quark-auto-save/media:/media \ # 可选，模块alist_strm_gen生成strm使用
+  -v ./quark-auto-save/config:/app/config \
+  -v ./quark-auto-save/media:/media \
   --network bridge \
   --restart unless-stopped \
-  cp0204/quark-auto-save:latest
-  # registry.cn-shenzhen.aliyuncs.com/cp0204/quark-auto-save:latest # 国内镜像地址
+  ghcr.io/xinghaix/quark-auto-save:latest
 ```
 
 docker-compose.yml
@@ -102,7 +109,7 @@ docker-compose.yml
 name: quark-auto-save
 services:
   quark-auto-save:
-    image: cp0204/quark-auto-save:latest
+    image: ghcr.io/xinghaix/quark-auto-save:latest
     container_name: quark-auto-save
     network_mode: bridge
     ports:
@@ -126,7 +133,7 @@ services:
 http://yourhost:5005/mcp
 ```
 
-服务支持标准 **Streamable HTTP**，POST 请求可返回 JSON 或 `text/event-stream`；同时支持带 API key 的 stdio，方便本机 Agent 使用。HTTP 请求使用以下任一认证方式：
+服务支持标准 **Streamable HTTP**，POST 请求可返回 JSON 或 `text/event-stream`；需要兼容旧版 SSE 客户端时使用 `GET /mcp/sse` 和 `POST /mcp/messages?sessionId=...`。同时支持带 API key 的 stdio，方便本机 Agent 使用。HTTP 请求使用以下任一认证方式：
 
 ```http
 Authorization: Bearer <MCP_API_KEY>
@@ -148,7 +155,7 @@ mcp_servers:
       Authorization: "Bearer <MCP_API_KEY>"
 ```
 
-本机 stdio 配置：
+本机 stdio 配置中的路径必须是 MCP 客户端所在环境里的实际路径；容器内路径示例：
 
 ```yaml
 mcp_servers:
@@ -163,13 +170,27 @@ mcp_servers:
 
 浏览器跨域调用默认关闭；确需使用时，通过环境变量 `MCP_ALLOWED_ORIGINS` 指定逗号分隔的完整 Origin，禁止使用 `*`。
 
-| 环境变量         | 默认       | 备注                                     |
-| ---------------- | ---------- | ---------------------------------------- |
-| `WEBUI_USERNAME` | `admin`    | 管理账号                                 |
-| `WEBUI_PASSWORD` | `admin123` | 管理密码                                 |
-| `PORT`           | `5005`     | 管理后台端口                             |
-| `PLUGIN_FLAGS`   |            | 插件标志，如 `-emby,-aria2` 禁用某些插件 |
-| `TASK_TIMEOUT`   | `1800`     | 任务执行超时时间（秒），超时则任务结束   |
+| 环境变量              | 默认       | 备注                                      |
+| --------------------- | ---------- | ----------------------------------------- |
+| `WEBUI_USERNAME`      | `admin`    | 管理账号                                  |
+| `WEBUI_PASSWORD`      | `admin123` | 管理密码                                  |
+| `PORT`                | `5005`     | 管理后台端口                              |
+| `PLUGIN_FLAGS`        |            | 插件标志，如 `-emby,-aria2` 禁用某些插件  |
+| `TASK_TIMEOUT`        | `1800`     | 任务执行超时时间（秒），超时则任务结束    |
+| `MCP_ALLOWED_ORIGINS` | 空         | MCP 浏览器跨域允许的完整 Origin，逗号分隔  |
+| `QAS_MCP_API_KEY`     | 空         | 仅用于 `--mcp-stdio` 的明文 API key        |
+
+#### 本 fork 发布（维护者）
+
+推送 `v*` tag 会触发 `.github/workflows/docker-publish.yml`：构建 `linux/amd64`、`linux/arm64`、`linux/arm/v7` 镜像，推送到 GHCR，并创建 GitHub Release。
+
+```shell
+git fetch origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+镜像同时生成 `vX.Y.Z`、`X.Y.Z`、`X.Y`、`X` 和 `latest` 标签。
 
 #### 一键更新
 
@@ -213,11 +234,11 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtow
 
 在有新转存时，可触发完成相应功能，如自动刷新媒体库、生成 .strm 文件等。配置指南：[插件配置](https://github.com/Cp0204/quark-auto-save/wiki/插件配置)
 
-媒体库模块以插件的方式的集成，如果你有兴趣请参考[插件开发指南](https://github.com/Cp0204/quark-auto-save/tree/main/plugins)。
+媒体库模块以插件的方式的集成，如果你有兴趣请参考[插件开发指南](https://github.com/xinghaix/quark-auto-save/tree/main/plugins)。
 
 ### 更多使用技巧
 
-请参考 Wiki ：[使用技巧集锦](https://github.com/Cp0204/quark-auto-save/wiki/使用技巧集锦)
+请参考上游 Wiki（本 fork 暂未复制 Wiki）：[使用技巧集锦](https://github.com/Cp0204/quark-auto-save/wiki/使用技巧集锦)
 
 ## 生态项目
 

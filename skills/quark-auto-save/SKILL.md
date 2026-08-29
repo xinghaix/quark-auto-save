@@ -1,10 +1,10 @@
 ---
 name: quark-auto-save
-description: Manage quark-auto-save tasks via CLI. (QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接, pan.quark.cn)
+description: Manage quark-auto-save tasks via CLI or MCP. (QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接, pan.quark.cn)
 metadata:
   openclaw:
     emoji: "💾"
-    homepage: "https://github.com/Cp0204/quark-auto-save"
+    homepage: "https://github.com/xinghaix/quark-auto-save"
     requires:
       env:
         - QAS_BASE_URL
@@ -17,7 +17,7 @@ metadata:
 
 # quark-auto-save
 
-Manage quark-auto-save tasks via CLI.
+Manage quark-auto-save tasks via CLI or MCP.
 
 QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接
 
@@ -30,6 +30,17 @@ When user send message like `https://pan.quark.cn/s/***`, get detail, add a QAS 
 - `QAS_TOKEN` - User provided
 
 > Set in the skill's env config (e.g., `openclaw.json` → `skills.entries.quark-auto-save.env.QAS_BASE_URL`). Restart gateway after editing.
+
+## MCP（远程 Agent）
+
+当前 Fork 已提供与 WebUI 共端口的 MCP 服务。先在 WebUI「系统配置 → MCP 服务」启用并设置 API key：
+
+- HTTP endpoint: `${QAS_BASE_URL}/mcp`
+- 认证：`Authorization: Bearer $MCP_API_KEY` 或 `X-API-Key: $MCP_API_KEY`
+- 旧版 SSE：`${QAS_BASE_URL}/mcp/sse`，消息发送到 `/mcp/messages?sessionId=...`
+- 删除、重命名、修改和手动运行等权限默认关闭，需在设置中心显式开启
+
+`qas_client.py` 仍使用传统 QAS token 接口；需要 MCP 的客户端应使用上面的 endpoint 和 API key。MCP API key 只以哈希形式持久化。
 
 ## First Configuration: Analyze User Habits
 
@@ -125,7 +136,7 @@ python3 {baseDir}/scripts/qas_client.py add-task '{"taskname": "Black Mirror", "
 
 ## `pattern` & `replace`
 
-**WIKI:**
+**WIKI（上游通用文档，Fork 暂未复制 Wiki）：**
 - RegexRename: https://github.com/Cp0204/quark-auto-save/wiki/正则处理教程
 - MagicRegex: https://github.com/Cp0204/quark-auto-save/wiki/魔法匹配和魔法变量
 
