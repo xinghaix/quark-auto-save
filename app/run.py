@@ -1,5 +1,8 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+"""Legacy Flask entrypoint retained for source compatibility; production uses the Go 1.27 binary.
+"""
 from flask import (
     json,
     Flask,
@@ -32,6 +35,7 @@ import base64
 import sys
 import os
 import re
+import shlex
 import threading
 import uuid
 from urllib.parse import urlparse
@@ -1408,8 +1412,7 @@ def run_python(args):
     logging.info(f">>> 定时运行任务")
     try:
         result = subprocess.run(
-            f"{PYTHON_PATH} {args}",
-            shell=True,
+            [PYTHON_PATH, *shlex.split(args)],
             timeout=TASK_TIMEOUT,
             capture_output=True,
             text=True,

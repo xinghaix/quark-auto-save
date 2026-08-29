@@ -1,4 +1,6 @@
-"""Small dependency-free MCP server core for Quark Auto Save.
+"""Legacy Python MCP core retained for compatibility tests; production uses the Go 1.27 MCP service.
+
+Small dependency-free MCP server core for Quark Auto Save.
 
 The transport is deliberately kept separate from the QAS Flask app.  The same
 JSON-RPC dispatcher is used by Streamable HTTP and stdio, so protocol behavior

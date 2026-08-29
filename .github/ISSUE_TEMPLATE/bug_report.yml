@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report! Please searched for historical issues and check README before opening this issue.
+        Thanks for taking the time to fill out this bug report! Please search historical issues and check the README before opening this issue.
 
         感谢您抽出宝贵的时间填写此报告！请确认打开此问题前已搜索历史 Issues 并阅读 README。
   - type: textarea
@@ -22,7 +22,7 @@ body:
     id: config-log
     attributes:
       label: Config & Log
-      description: 配置、日志和API请求返回，有效的信息能帮助我更准确地定位问题
+      description: 配置、日志和 API 请求返回；请先删除 Cookie、密码、MCP API key、Bearer token 和 webhook 密钥，有效的信息能帮助我更准确地定位问题
       value: |
         #### Config
         ```json
@@ -38,14 +38,14 @@ body:
       label: Operating environment
       description: 运行环境
       options:
-        - Qinglong
-        - Python
-        - Docker
+        - Docker (Go 1.27 backend)
+        - Go 1.27 binary
+        - Python compatibility worker
     validations:
       required: true
   - type: input
     id: version
     attributes:
       label: Environment version
-      description: 运行环境（Qinglong、Python、Docker）的版本
+      description: 运行环境（Go 1.27、Docker、Python compatibility worker）的版本
       placeholder: ex. v2.17.1

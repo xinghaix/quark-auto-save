@@ -4,16 +4,14 @@
 
 # 夸克网盘自动转存
 
-夸克网盘签到、自动转存、命名整理、发推送提醒和刷新媒体库一条龙。
+夸克网盘签到、自动转存、命名整理、推送提醒和媒体库联动。
 
-对于一些持续更新的资源，隔段时间去转存十分麻烦。
-
-定期执行本脚本自动转存和文件名整理，并通过内置插件扩展媒体库处理。
+服务端已迁移为 **Go 1.27**，提供 WebUI、REST API、MCP 和定时调度；现有 Python 转存链作为兼容 worker 保留，以维持 Python 正则、插件和通知渠道的行为。
 
 > **本仓库说明（xinghaix fork）**
 >
 > 本仓库是 `xinghaix/quark-auto-save` 的 Fork，代码和镜像以本仓库为准，协议为 AGPL-3.0。
-> 已包含现代化 WebUI（Vue 3.5 + Bootstrap 5.3、浅色/深色/海洋/日落主题、中英界面）、原生 MCP 远程管理和 GHCR 发布流程。
+> 前端使用 Vue 3.5 + Bootstrap 5.3，支持浅色/深色/海洋/日落主题和中英界面；MCP 与 WebUI 共用管理端口。
 > 主题与语言不写入服务器配置；Cookie、推送密钥等仍只存在你自己的 `config` 目录。
 > 镜像地址：`ghcr.io/xinghaix/quark-auto-save`。
 
@@ -76,7 +74,7 @@
 echo "$GHCR_PAT" | docker login ghcr.io -u <GitHub用户名> --password-stdin
 ```
 
-Docker 部署提供 WebUI 进行管理配置：
+Docker 部署提供 WebUI 进行管理配置。生产环境不要使用默认密码，并建议通过 HTTPS 反向代理暴露服务：
 
 ```shell
 # 5005:5005 中前一个端口可改，后一个端口固定
@@ -86,32 +84,18 @@ docker run -d \
   --name quark-auto-save \
   -p 5005:5005 \
   -e WEBUI_USERNAME=admin \
-  -e WEBUI_PASSWORD=admin123 \
-  -v ./quark-auto-save/config:/app/config \
-  -v ./quark-auto-save/media:/media \
+  -e WEBUI_PASSWORD='<strong-random-password>' \
+  -v ./config:/app/config \
+  -v ./media:/media \
   --network bridge \
   --restart unless-stopped \
   ghcr.io/xinghaix/quark-auto-save:latest
 ```
 
-docker-compose.yml
+仓库内提供了可直接使用的 `docker-compose.yml`：
 
-```yaml
-name: quark-auto-save
-services:
-  quark-auto-save:
-    image: ghcr.io/xinghaix/quark-auto-save:latest
-    container_name: quark-auto-save
-    network_mode: bridge
-    ports:
-      - 5005:5005
-    restart: unless-stopped
-    environment:
-      WEBUI_USERNAME: "admin"
-      WEBUI_PASSWORD: "admin123"
-    volumes:
-      - ./quark-auto-save/config:/app/config
-      - ./quark-auto-save/media:/media
+```shell
+docker compose up -d
 ```
 
 管理地址：http://yourhost:5005
@@ -146,29 +130,42 @@ mcp_servers:
       Authorization: "Bearer <MCP_API_KEY>"
 ```
 
-本机 stdio 配置中的路径必须是 MCP 客户端所在环境里的实际路径；容器内路径示例：
+本机 stdio 配置中的路径必须是 MCP 客户端所在环境里的实际路径；容器内 Go 1.27 服务示例：
 
 ```yaml
 mcp_servers:
   qas-local:
-    command: "python3"
-    args: ["/app/app/run.py", "--mcp-stdio"]
+    command: "/usr/local/bin/quark-auto-save"
+    args: ["--mcp-stdio"]
     env:
       QAS_MCP_API_KEY: "<MCP_API_KEY>"
 ```
 
-当前工具包括任务查询/创建/修改/删除/运行、运行状态与日志查询、电视剧/资源搜索、分享详情、夸克文件浏览/删除/重命名、脱敏配置读取和系统状态查询。默认只开放读取类权限；删除、重命名、修改和运行等写操作必须在设置中心显式开启。API key 只保存哈希，不会通过 `/data` 或 MCP 返回。
+历史兼容命令 `python3 /app/app/run.py --mcp-stdio` 在镜像内由 shim 转发到同一个 Go MCP 服务；新配置优先直接使用 Go 二进制。
 
-浏览器跨域调用默认关闭；确需使用时，通过环境变量 `MCP_ALLOWED_ORIGINS` 指定逗号分隔的完整 Origin，禁止使用 `*`。
+当前工具包括任务查询/创建/修改/删除/运行、运行状态与日志查询、电视剧/资源搜索、分享详情、夸克文件浏览/删除/重命名、脱敏配置读取和系统状态查询。默认只开放读取类权限；删除、重命名、修改和运行等写操作必须在设置中心显式开启。MCP API key 只保存哈希，不会通过 `/data` 或 MCP 返回；传统 WebUI/API 的 `api_token` 仍按兼容格式派生，二者不是同一个认证域。
+
+浏览器跨域调用默认关闭；确需使用时，通过环境变量 `MCP_ALLOWED_ORIGINS` 指定逗号分隔的完整 Origin，禁止使用 `*`。legacy SSE 建议同时设置 `MCP_PUBLIC_ORIGIN`，避免 endpoint URL 依赖未验证的 Host 头。
+
+隐私边界：已登录的 WebUI `/data` 是本地可编辑快照，会返回 Cookie、推送和插件配置；不要把它转发给外部 Agent。MCP `qas_config_get` 则只返回递归脱敏配置，MCP API key 只保存 SHA-256 哈希。
 
 | 环境变量              | 默认       | 备注                                      |
 | --------------------- | ---------- | ----------------------------------------- |
 | `WEBUI_USERNAME`      | `admin`    | 管理账号                                  |
-| `WEBUI_PASSWORD`      | `admin123` | 管理密码                                  |
+| `WEBUI_PASSWORD`      | `admin123` | 仅为兼容默认值，生产部署必须覆盖            |
+| `HOST`                | `0.0.0.0`  | 监听地址                                  |
 | `PORT`                | `5005`     | 管理后台端口                              |
+| `CONFIG_PATH`         | `./config/quark_config.json` | 配置文件路径                 |
+| `CONFIG_TEMPLATE_PATH`| `./quark_config.json` | 缺省配置模板路径                    |
+| `STATIC_DIR`          | `./app/static` | 前端静态资源路径                       |
+| `TEMPLATE_DIR`        | `./app/templates` | HTML 模板路径                        |
+| `PYTHON_PATH`         | `python3`  | 兼容 worker 的 Python 解释器              |
+| `SCRIPT_PATH`         | `./quark_auto_save.py` | 兼容 worker 脚本路径                |
+| `PREVIEW_SCRIPT_PATH` | `./app/runtime/preview.py` | 复杂正则预览 helper 路径       |
 | `PLUGIN_FLAGS`        |            | 插件标志，如 `-emby,-aria2` 禁用某些插件  |
 | `TASK_TIMEOUT`        | `1800`     | 任务执行超时时间（秒），超时则任务结束    |
 | `MCP_ALLOWED_ORIGINS` | 空         | MCP 浏览器跨域允许的完整 Origin，逗号分隔  |
+| `MCP_PUBLIC_ORIGIN`   | 空         | legacy SSE endpoint 的显式公开基址         |
 | `QAS_MCP_API_KEY`     | 空         | 仅用于 `--mcp-stdio` 的明文 API key        |
 
 #### 本 fork 发布（维护者）
@@ -182,6 +179,20 @@ git push origin vX.Y.Z
 ```
 
 镜像同时生成 `vX.Y.Z`、`X.Y.Z`、`X.Y`、`X` 和 `latest` 标签。
+
+### 本地构建与测试
+
+需要 Go 1.27：
+
+```shell
+go version
+mkdir -p bin
+go build -trimpath -o bin/quark-auto-save ./cmd/quark-auto-save
+go test ./...
+./bin/quark-auto-save
+```
+
+Go 服务端通过受控子进程调用 `quark_auto_save.py` 完成现有转存算法、Python 正则、插件和通知；因此本地运行任务仍需要 `requirements.txt` 中的 Python 依赖。Docker 镜像会自动安装这些兼容依赖，但 HTTP、MCP、配置和调度入口均由 Go 1.27 二进制提供。详细边界见 [Go 后端架构](docs/backend-go.md)。
 
 <details open>
 <summary>WebUI 预览</summary>
@@ -205,7 +216,7 @@ git push origin vX.Y.Z
 | `$TV`                                  |                         | [魔法匹配](#魔法匹配)剧集文件                                          |
 | `^(\d+)\.mp4`                          | `{TASKNAME}.S02E\1.mp4` | 01.mp4 → 任务名.S02E01.mp4                                             |
 
-正则匹配示例见本节；任务支持 Python 正则表达式。
+正则匹配示例见本节；任务由兼容 worker 处理，继续支持 Python 正则表达式。
 
 > [!TIP]
 >

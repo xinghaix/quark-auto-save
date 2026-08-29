@@ -1,4 +1,4 @@
-/* Fork UI i18n. Based on Cp0204/quark-auto-save, AGPL-3.0. */
+/* Fork UI i18n, AGPL-3.0. */
 /* QAS WebUI i18n — zh / en. Keys must stay in sync. */
 window.QAS_I18N = {
   zh: {

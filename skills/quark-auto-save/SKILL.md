@@ -19,6 +19,8 @@ metadata:
 
 Manage quark-auto-save tasks via CLI or MCP.
 
+服务端入口是 Go 1.27 二进制；Python 脚本仅作为兼容客户端/任务 worker，不是 Web 服务入口。
+
 QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接
 
 When user send message like `https://pan.quark.cn/s/***`, get detail, add a QAS task.
@@ -40,7 +42,9 @@ When user send message like `https://pan.quark.cn/s/***`, get detail, add a QAS 
 - 旧版 SSE：`${QAS_BASE_URL}/mcp/sse`，消息发送到 `/mcp/messages?sessionId=...`
 - 删除、重命名、修改和手动运行等权限默认关闭，需在设置中心显式开启
 
-`qas_client.py` 仍使用传统 QAS token 接口；需要 MCP 的客户端应使用上面的 endpoint 和 API key。MCP API key 只以哈希形式持久化。
+`qas_client.py` 是 Python 客户端，仍使用传统 QAS token 接口；需要 MCP 的客户端应使用上面的 endpoint 和 API key。MCP API key 只以哈希形式持久化。
+
+Go 服务端的容器入口为 `/usr/local/bin/quark-auto-save`；stdio 使用 `--mcp-stdio`，HTTP 使用 `PORT`（默认 `5005`）。
 
 ## First Configuration: Analyze User Habits
 
@@ -73,9 +77,9 @@ After the user sets the token, the following analysis must be performed and reco
    ...
    ```
 
-## Python Client
+## Client script
 
-Use `{baseDir}/scripts/qas_client.py` for all operations:
+The existing Python client script calls the Go backend API; use `{baseDir}/scripts/qas_client.py` for all operations:
 
 ```bash
 python3 {baseDir}/scripts/qas_client.py get-config                                    # Get all config & tasks

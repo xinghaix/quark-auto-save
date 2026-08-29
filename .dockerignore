@@ -1,4 +1,15 @@
 .git
 .github
 __pycache__
-/img
+*.py[cod]
+*.log
+.env
+.env.*
+/config
+/media
+app/run.py
+app/mcp.py
+tests
+docs
+skills
+img

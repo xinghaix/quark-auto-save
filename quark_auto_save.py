@@ -1,7 +1,6 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Modify: 2026-02-04
-# Repo: https://github.com/Cp0204/quark_auto_save
 # ConfigFile: quark_config.json
 """
 new Env('夸克自动追更');
@@ -24,15 +23,12 @@ from natsort import natsorted
 # 兼容青龙
 try:
     from treelib import Tree
-except:
-    print("正在尝试自动安装依赖...")
-    os.system("pip3 install treelib &> /dev/null")
-    from treelib import Tree
+except ImportError as exc:
+    raise RuntimeError("缺少 treelib，请先安装 requirements.txt 中的兼容 worker 依赖") from exc
 
 
 CONFIG_DATA = {}
 NOTIFYS = []
-GH_PROXY = os.environ.get("GH_PROXY", "https://ghproxy.net/")
 
 
 # 发送通知消息
@@ -1279,10 +1275,18 @@ def main():
             cookie_val = os.environ.get("QUARK_COOKIE")
             cookie_form_file = False
         else:
-            print(f"⚙️ 配置文件 {config_path} 不存在❌，正远程从下载配置模版")
-            config_url = f"{GH_PROXY}https://raw.githubusercontent.com/Cp0204/quark_auto_save/main/quark_config.json"
-            if Config.download_file(config_url, config_path):
-                print("⚙️ 配置模版下载成功✅，请到程序目录中手动配置")
+            print(f"⚙️ 配置文件 {config_path} 不存在❌，尝试复制本地配置模版")
+            template_path = os.environ.get(
+                "CONFIG_TEMPLATE_PATH",
+                os.path.join(os.path.dirname(__file__), "quark_config.json"),
+            )
+            if os.path.exists(template_path):
+                os.makedirs(os.path.dirname(config_path) or ".", exist_ok=True)
+                with open(template_path, "rb") as source, open(config_path, "wb") as target:
+                    target.write(source.read())
+                print("⚙️ 本地配置模版复制成功✅，请到程序目录中手动配置")
+            else:
+                print(f"❌ 本地配置模版不存在: {template_path}")
             return
     else:
         print(f"⚙️ 正从 {config_path} 文件中读取配置")
