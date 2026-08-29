@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -50,7 +52,7 @@ func matchMParam(cookie string) map[string]string {
 	result := map[string]string{}
 	for key, expression := range map[string]*regexp.Regexp{"kps": mparamKPSRE, "sign": mparamSignRE, "vcode": mparamVCodeRE} {
 		if match := expression.FindStringSubmatch(cookie); len(match) == 2 {
-			value, _ := url.QueryUnescape(strings.ReplaceAll(match[1], "%25", "%"))
+			value := strings.ReplaceAll(match[1], "%25", "%")
 			result[key] = value
 		}
 	}
@@ -94,7 +96,7 @@ func (q *QuarkClient) request(ctx context.Context, method, path string, params u
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", quarkUserAgent)
-	if q.cookie != "" && len(q.mparam) != 3 {
+	if q.cookie != "" && !(len(q.mparam) == 3 && strings.Contains(path, "share")) {
 		req.Header.Set("Cookie", q.cookie)
 	}
 	for key, values := range headers {
@@ -382,6 +384,36 @@ func pathToFID(ctx context.Context, cookie, path string) (any, error) {
 	return nil, fmt.Errorf("未找到文件: %s", path)
 }
 
+func resolveDestructiveFID(ctx context.Context, cookie string, fid any, path string) (any, error) {
+	fidText := ""
+	switch value := fid.(type) {
+	case nil:
+	case string:
+		fidText = strings.TrimSpace(value)
+	case float64:
+		if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || math.Trunc(value) != value {
+			return nil, errors.New("fid 必须是非负整数或字符串")
+		}
+		fidText = strconv.FormatFloat(value, 'f', -1, 64)
+	default:
+		return nil, errors.New("fid 必须是非负整数或字符串")
+	}
+	pathText := strings.TrimSpace(path)
+	if fidText != "" && pathText != "" {
+		return nil, errors.New("fid 与 path 只能提供一个")
+	}
+	if fidText != "" {
+		if fidText == "0" {
+			return nil, errors.New("不能操作根目录")
+		}
+		return fid, nil
+	}
+	if pathText == "" || normalizePath(pathText) == "/" {
+		return nil, errors.New("必须提供文件 fid 或非根路径")
+	}
+	return pathToFID(ctx, cookie, pathText)
+}
+
 func normalizePath(path string) string {
 	if path == "" {
 		return "/"
@@ -435,19 +467,24 @@ func osEnvBool(name string, fallback bool) bool {
 	return value == "1" || value == "true" || value == "yes" || value == "on"
 }
 
-func searchSuggestions(ctx context.Context, source map[string]any, keyword string, deep bool) ([]map[string]any, error) {
-	if strings.TrimSpace(keyword) == "" {
-		return nil, errors.New("搜索名称不能为空")
+func searchSuggestions(ctx context.Context, source map[string]any, keyword string, deep bool) ([]map[string]any, string, error) {
+	keyword = strings.ToLower(strings.TrimSpace(keyword))
+	if keyword == "" {
+		return nil, "", errors.New("搜索名称不能为空")
 	}
 	var all []map[string]any
+	var refreshedToken string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	errCount := 0
-	searchSource := func(fn func() ([]map[string]any, error)) {
+	searchSource := func(fn func() ([]map[string]any, string, error)) {
 		defer wg.Done()
-		items, err := fn()
+		items, token, err := fn()
 		mu.Lock()
 		defer mu.Unlock()
+		if token != "" {
+			refreshedToken = token
+		}
 		if err != nil {
 			errCount++
 			return
@@ -457,12 +494,15 @@ func searchSuggestions(ctx context.Context, source map[string]any, keyword strin
 	cloud := mapValue(source["cloudsaver"])
 	if asBoolDefault(cloud["enable"], true) && asString(cloud["server"]) != "" {
 		wg.Add(1)
-		go searchSource(func() ([]map[string]any, error) { return cloudSaverSearch(ctx, cloud, keyword) })
+		go searchSource(func() ([]map[string]any, string, error) { return cloudSaverSearch(ctx, cloud, keyword) })
 	}
 	pan := mapValue(source["pansou"])
 	if asBoolDefault(pan["enable"], true) && asString(pan["server"]) != "" {
 		wg.Add(1)
-		go searchSource(func() ([]map[string]any, error) { return panSouSearch(ctx, pan, keyword, deep) })
+		go searchSource(func() ([]map[string]any, string, error) {
+			items, err := panSouSearch(ctx, pan, keyword, deep)
+			return items, "", err
+		})
 	}
 	wg.Wait()
 	seen := map[string]bool{}
@@ -476,9 +516,9 @@ func searchSuggestions(ctx context.Context, source map[string]any, keyword strin
 		}
 	}
 	if len(result) == 0 && errCount > 0 {
-		return result, errors.New("搜索源请求失败")
+		return result, refreshedToken, errors.New("搜索源请求失败")
 	}
-	return result, nil
+	return result, refreshedToken, nil
 }
 
 func externalJSON(ctx context.Context, method, rawURL string, params url.Values, payload any, headers http.Header) (map[string]any, error) {
@@ -522,32 +562,34 @@ func externalJSON(ctx context.Context, method, rawURL string, params url.Values,
 	return decoded, nil
 }
 
-func cloudSaverSearch(ctx context.Context, config map[string]any, keyword string) ([]map[string]any, error) {
+func cloudSaverSearch(ctx context.Context, config map[string]any, keyword string) ([]map[string]any, string, error) {
 	server := strings.TrimRight(asString(config["server"]), "/")
 	headers := http.Header{"Content-Type": {"application/json"}}
+	refreshedToken := ""
 	if token := asString(config["token"]); token != "" {
 		headers.Set("Authorization", "Bearer "+token)
 	}
 	query := url.Values{"keyword": {keyword}, "lastMessageId": {""}}
 	response, err := externalJSON(ctx, http.MethodGet, server+"/api/search", query, nil, headers)
 	if err != nil {
-		return nil, err
+		return nil, refreshedToken, err
 	}
 	if !asBoolDefault(response["success"], false) && (asString(response["message"]) == "无效的 token" || asString(response["message"]) == "未提供 token") {
 		login, loginErr := externalJSON(ctx, http.MethodPost, server+"/api/user/login", nil, map[string]any{"username": config["username"], "password": config["password"]}, headers)
 		if loginErr != nil || !asBoolDefault(login["success"], false) {
-			return nil, errors.New("CloudSaver 登录失败")
+			return nil, refreshedToken, errors.New("CloudSaver 登录失败")
 		}
 		if token := asString(mapValue(login["data"])["token"]); token != "" {
+			refreshedToken = token
 			headers.Set("Authorization", "Bearer "+token)
 			response, err = externalJSON(ctx, http.MethodGet, server+"/api/search", query, nil, headers)
 			if err != nil {
-				return nil, err
+				return nil, refreshedToken, err
 			}
 		}
 	}
 	if !asBoolDefault(response["success"], false) {
-		return nil, errors.New(asString(response["message"]))
+		return nil, refreshedToken, errors.New(asString(response["message"]))
 	}
 	result := []map[string]any{}
 	seen := map[string]bool{}
@@ -572,7 +614,7 @@ func cloudSaverSearch(ctx context.Context, config map[string]any, keyword string
 			}
 		}
 	}
-	return result, nil
+	return result, refreshedToken, nil
 }
 
 func panSouSearch(ctx context.Context, config map[string]any, keyword string, deep bool) ([]map[string]any, error) {

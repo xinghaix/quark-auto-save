@@ -34,6 +34,50 @@ var allowedConfigKeys = map[string]bool{
 	"magic_regex": true, "plugins": true, "source": true,
 }
 
+// These defaults mirror the compatibility worker's plugin declarations. The
+// Go control plane must expose them before the first Python worker run.
+var defaultPluginConfigs = map[string]any{
+	"emby": map[string]any{"url": "", "token": ""},
+	"fnv": map[string]any{
+		"base_url": "http://10.0.0.6:5666", "app_name": "trimemedia-web", "username": "",
+		"password": "", "secret_string": "", "api_key": "", "token": nil,
+	},
+	"auto_unarchive": map[string]any{
+		"tips_":         "自动云解压(zip|rar|7z)到保存目录，在任务插件选项中启用，该功能需SVIP支持",
+		"global_enable": false, "max_concurrent": 3,
+	},
+	"aria2": map[string]any{
+		"host_port": "172.17.0.1:6800", "secret": "", "dir": "/Downloads",
+	},
+	"alist_sync": map[string]any{
+		"url": "", "token": "", "quark_storage_id": "", "save_storage_id": "", "tv_mode": "",
+	},
+	"alist_strm_gen": map[string]any{
+		"tips_alist_refresh": "该插件需与 alist 刷新插件配合使用，否则可能出现 alist 未刷新导致无法生成 strm 的问题！",
+		"url":                "", "token": "", "storage_id": "", "strm_save_dir": "/media", "strm_replace_host": "",
+	},
+}
+
+var defaultTaskPluginConfigs = map[string]any{
+	"emby":           map[string]any{"try_match": true, "media_id": ""},
+	"fnv":            map[string]any{"auto_refresh": false, "mdb_name": "", "mdb_dir_list": ""},
+	"auto_unarchive": map[string]any{"enable": false, "auto_clean": true, "auto_clean_zipdir": false},
+	"aria2":          map[string]any{"auto_download": false, "download_subdir": false, "save_path": "", "pause": false},
+	"alist_sync":     map[string]any{"enable": false, "save_path": "", "verify_path": "", "full_path_mode": false},
+	"alist_strm_gen": map[string]any{"auto_gen": true},
+}
+
+var legacyMagicRegexDefaults = map[string]any{
+	"$TV": map[string]any{
+		"pattern": `.*?([Ss]\d{1,2})?(?:[第EePpXx\.\-\_\( ]{1,2}|^)(\d{1,3})(?!\d).*?\.(mp4|mkv)`,
+		"replace": `\1E\2.\3`,
+	},
+	"$BLACK_WORD": map[string]any{
+		"pattern": `^(?!.*纯享)(?!.*加更)(?!.*超前企划)(?!.*训练室)(?!.*蒸蒸日上).*`,
+		"replace": "",
+	},
+}
+
 type ConfigStore struct {
 	mu           sync.RWMutex
 	path         string
@@ -90,10 +134,39 @@ func (s *ConfigStore) load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data = decoded
+	normalizeLegacyConfig(s.data)
 	s.applyRuntimeLocked()
 	ensureTaskIDs(s.data)
 	s.data["mcp"] = normalizeMCP(s.data["mcp"])
 	return s.saveLocked()
+}
+
+func normalizeLegacyConfig(data map[string]any) {
+	for _, task := range taskList(data["tasklist"]) {
+		if replace, ok := task["replace"].(string); ok {
+			task["replace"] = strings.ReplaceAll(replace, "$TASKNAME", "{TASKNAME}")
+		}
+	}
+	if len(mapValue(data["magic_regex"])) == 0 {
+		data["magic_regex"] = cloneMap(legacyMagicRegexDefaults)
+	}
+	data["plugins"] = mergeDefaultPluginConfigs(data["plugins"])
+}
+
+func mergeDefaultPluginConfigs(raw any) map[string]any {
+	existing := mapValue(raw)
+	result := cloneMap(existing)
+	for name, rawDefaults := range defaultPluginConfigs {
+		defaults := mapValue(rawDefaults)
+		merged := cloneMap(mapValue(existing[name]))
+		for key, value := range defaults {
+			if _, ok := merged[key]; !ok {
+				merged[key] = cloneValue(value)
+			}
+		}
+		result[name] = merged
+	}
+	return result
 }
 
 func (s *ConfigStore) applyRuntimeLocked() {
@@ -161,6 +234,7 @@ func (s *ConfigStore) Reload() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data = decoded
+	normalizeLegacyConfig(s.data)
 	s.applyRuntimeLocked()
 	ensureTaskIDs(s.data)
 	s.data["mcp"] = normalizeMCP(s.data["mcp"])
@@ -203,6 +277,20 @@ func (s *ConfigStore) Cookies() []string {
 	return result
 }
 
+func (s *ConfigStore) SetCloudSaverToken(token string) error {
+	if token == "" {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	source := mapValue(s.data["source"])
+	cloud := mapValue(source["cloudsaver"])
+	cloud["token"] = token
+	source["cloudsaver"] = cloud
+	s.data["source"] = source
+	return s.saveLocked()
+}
+
 func (s *ConfigStore) UsernamePassword() (string, string) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -222,7 +310,7 @@ func (s *ConfigStore) DataForUI() map[string]any {
 	delete(data, "webui")
 	data["mcp"] = mcpConfigForUI(data["mcp"])
 	data["api_token"] = loginToken(s.username, s.password)
-	data["task_plugins_config_default"] = map[string]any{}
+	data["task_plugins_config_default"] = cloneMap(defaultTaskPluginConfigs)
 	return data
 }
 
@@ -261,7 +349,7 @@ func (s *ConfigStore) AddTask(task map[string]any) (map[string]any, error) {
 		value["id"] = newID()
 	}
 	if value["addition"] == nil {
-		value["addition"] = map[string]any{}
+		value["addition"] = cloneMap(defaultTaskPluginConfigs)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

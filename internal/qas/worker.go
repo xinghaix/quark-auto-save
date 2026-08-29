@@ -41,7 +41,16 @@ func NewWorker(configPath string, logs *LogBuffer) *Worker {
 
 func (w *Worker) command(ctx context.Context, tasks []map[string]any, test bool, cookies []string, pushConfig map[string]any) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, w.python, "-u", w.script, w.config)
-	env := append([]string(nil), os.Environ()...)
+	env := make([]string, 0, len(os.Environ())+5)
+	for _, item := range os.Environ() {
+		key, _, _ := strings.Cut(item, "=")
+		switch key {
+		case "TASKLIST", "COOKIE", "PUSH_CONFIG", "QUARK_TEST", "PYTHONIOENCODING":
+			continue
+		default:
+			env = append(env, item)
+		}
+	}
 	env = append(env, "PYTHONIOENCODING=utf-8")
 	if tasks != nil {
 		if data, err := json.Marshal(tasks); err == nil {
@@ -133,58 +142,32 @@ func (m *RunManager) SetOnComplete(callback func()) {
 	m.mu.Unlock()
 }
 
-func (m *RunManager) Start(ctx context.Context, tasks []map[string]any) (map[string]any, error) {
-	keys := taskRunKeys(tasks)
+func (m *RunManager) Start(ctx context.Context, tasks []map[string]any, fromConfig bool) (map[string]any, error) {
 	m.mu.Lock()
-	for _, key := range keys {
-		if key == "*" && len(m.activeKeys) > 0 {
-			m.mu.Unlock()
-			return nil, errors.New("任务与已有运行冲突")
-		}
-		if key != "*" {
-			if _, busy := m.activeKeys["*"]; busy {
-				m.mu.Unlock()
-				return nil, errors.New("任务与已有运行冲突")
-			}
-			if _, busy := m.activeKeys[key]; busy {
-				m.mu.Unlock()
-				return nil, errors.New("任务与已有运行冲突")
-			}
-		}
+	// ponytail: one worker at a time; the Python process rewrites the whole config.json.
+	if len(m.activeKeys) > 0 {
+		m.mu.Unlock()
+		return nil, errors.New("任务与已有运行冲突")
 	}
 	id := newID()
+	keys := []string{"*"}
 	record := &RunRecord{RunID: id, Status: "running", StartedAt: time.Now().UTC(), TaskCount: len(tasks), LogTail: []string{}}
 	m.runs[id] = record
-	for _, key := range keys {
-		m.activeKeys[key] = id
-	}
+	m.activeKeys["*"] = id
 	m.trimLocked()
 	m.mu.Unlock()
-	go m.execute(ctx, id, tasks, keys)
+	go m.execute(ctx, id, tasks, keys, fromConfig)
 	return m.status(id), nil
 }
 
-func taskRunKeys(tasks []map[string]any) []string {
-	if len(tasks) == 0 {
-		return []string{"*"}
+func (m *RunManager) execute(parent context.Context, id string, tasks []map[string]any, keys []string, fromConfig bool) {
+	workerTasks := tasks
+	if fromConfig {
+		// An all-task run must leave TASKLIST unset so the Python worker keeps
+		// its normal multi-account sign-in behavior.
+		workerTasks = nil
 	}
-	keys := make([]string, 0, len(tasks))
-	seen := map[string]bool{}
-	for index, task := range tasks {
-		key := asString(task["id"])
-		if key == "" {
-			key = fmt.Sprintf("index:%d", index)
-		}
-		if !seen[key] {
-			seen[key] = true
-			keys = append(keys, key)
-		}
-	}
-	return keys
-}
-
-func (m *RunManager) execute(parent context.Context, id string, tasks []map[string]any, keys []string) {
-	code, timedOut, err := m.worker.Run(parent, tasks, false, nil, nil, func(line string) {
+	code, timedOut, err := m.worker.Run(parent, workerTasks, false, nil, nil, func(line string) {
 		m.mu.Lock()
 		if record := m.runs[id]; record != nil {
 			record.LogTail = append(record.LogTail, line)
@@ -311,6 +294,24 @@ func (m *RunManager) Stream(ctx context.Context, tasks []map[string]any, test bo
 	if write == nil {
 		return errors.New("stream writer 未配置")
 	}
+	m.mu.Lock()
+	if len(m.activeKeys) > 0 {
+		m.mu.Unlock()
+		return errors.New("任务与已有运行冲突")
+	}
+	m.activeKeys["*"] = "stream"
+	onComplete := m.onComplete
+	m.mu.Unlock()
+	defer func() {
+		if onComplete != nil {
+			onComplete()
+		}
+		m.mu.Lock()
+		if m.activeKeys["*"] == "stream" {
+			delete(m.activeKeys, "*")
+		}
+		m.mu.Unlock()
+	}()
 	_, _, err := m.worker.Run(ctx, tasks, test, cookies, pushConfig, func(line string) {
 		if writeErr := write(line); writeErr != nil {
 			// The request context is cancelled on disconnect; retaining the first

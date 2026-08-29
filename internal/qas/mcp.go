@@ -444,7 +444,7 @@ func (m *MCPService) dispatch(message map[string]any, sessionID, transport, prot
 			if !hasID {
 				return nil, sessionID, version, nil
 			}
-			return initializeResult(requestID, version), sessionID, version, nil
+			return m.initializeResult(requestID, version), sessionID, version, nil
 		}
 		if !hasID {
 			return nil, sessionID, protocol, nil
@@ -454,7 +454,7 @@ func (m *MCPService) dispatch(message map[string]any, sessionID, transport, prot
 			return mcpErrorResponse(requestID, true, -32602, err.Error(), nil), sessionID, protocol, nil
 		}
 		newID := m.newSession(version)
-		return initializeResult(requestID, version), newID, version, nil
+		return m.initializeResult(requestID, version), newID, version, nil
 	}
 	if transport == "http" {
 		session, err := m.validateSession(sessionID, protocol)
@@ -505,17 +505,28 @@ func negotiateMCPVersion(params map[string]any) (string, error) {
 	return defaultMCPVersion, nil
 }
 
-func initializeResult(id any, version string) map[string]any {
+func (m *MCPService) initializeResult(id any, version string) map[string]any {
 	return resultResponse(id, map[string]any{
 		"protocolVersion": version,
 		"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
-		"serverInfo":      map[string]any{"name": "quark-auto-save", "version": "1.0.0"},
+		"serverInfo":      map[string]any{"name": "quark-auto-save", "version": m.app.version},
 		"instructions":    "Use qas_tasks_* for task management, qas_logs_query for runtime logs, and qas_search_tv for resource search. Destructive tools are permission-gated.",
 	})
 }
 
 func resultResponse(id any, result any) map[string]any {
 	return map[string]any{"jsonrpc": "2.0", "id": id, "result": result}
+}
+
+func mcpToolExecutionError(id any, err error) map[string]any {
+	message := redactText(err)
+	structured := map[string]any{"success": false, "message": message}
+	encoded, _ := json.Marshal(structured)
+	return resultResponse(id, map[string]any{
+		"content":           []any{map[string]any{"type": "text", "text": string(encoded)}},
+		"isError":           true,
+		"structuredContent": structured,
+	})
 }
 
 func mcpErrorResponse(id any, hasID bool, code int, message string, data any) map[string]any {
@@ -591,10 +602,17 @@ func (m *MCPService) toolList() []map[string]any {
 }
 
 func (m *MCPService) callTool(id any, params map[string]any) map[string]any {
-	name := asString(params["name"])
-	args := mapValue(params["arguments"])
-	if name == "" {
+	name, nameOK := params["name"].(string)
+	if !nameOK || strings.TrimSpace(name) == "" {
 		return mcpErrorResponse(id, true, -32602, "Tool name is required", nil)
+	}
+	args := map[string]any{}
+	if raw, exists := params["arguments"]; exists && raw != nil {
+		var argsOK bool
+		args, argsOK = raw.(map[string]any)
+		if !argsOK {
+			return mcpErrorResponse(id, true, -32602, "Tool arguments must be an object", nil)
+		}
 	}
 	var definition *mcpTool
 	for _, candidate := range allMCPTools() {
@@ -612,7 +630,7 @@ func (m *MCPService) callTool(id any, params map[string]any) map[string]any {
 	}
 	data, err := m.backendCall(name, args)
 	if err != nil {
-		return mcpErrorResponse(id, true, -32602, redactText(err), nil)
+		return mcpToolExecutionError(id, err)
 	}
 	encoded, _ := json.Marshal(data)
 	structured := data
@@ -764,7 +782,7 @@ func (m *MCPService) backendCall(name string, args map[string]any) (any, error) 
 			task["startfid"] = ""
 		}
 		if task["addition"] == nil {
-			task["addition"] = map[string]any{}
+			task["addition"] = cloneMap(defaultTaskPluginConfigs)
 		}
 		value, err := m.app.store.AddTask(task)
 		if err != nil {
@@ -805,7 +823,7 @@ func (m *MCPService) backendCall(name string, args map[string]any) (any, error) 
 			}
 			tasks = []map[string]any{tasks[index]}
 		}
-		result, err := m.app.runs.Start(context.Background(), tasks)
+		result, err := m.app.runs.Start(context.Background(), tasks, !hasSelector)
 		if err != nil {
 			return nil, err
 		}
@@ -820,8 +838,14 @@ func (m *MCPService) backendCall(name string, args map[string]any) (any, error) 
 		result["success"] = true
 		return result, nil
 	case "qas_search_tv":
-		items, err := searchSuggestions(context.Background(), mapValue(m.app.store.Snapshot()["source"]), asString(args["name"]), asBoolDefault(args["deep"], false))
-		return map[string]any{"success": err == nil, "data": items, "query": asString(args["name"])}, nil
+		keyword := strings.ToLower(strings.TrimSpace(asString(args["name"])))
+		items, refreshedToken, err := searchSuggestions(context.Background(), mapValue(m.app.store.Snapshot()["source"]), keyword, asBoolDefault(args["deep"], false))
+		if refreshedToken != "" {
+			if saveErr := m.app.store.SetCloudSaverToken(refreshedToken); saveErr != nil {
+				m.app.logs.Add("ERROR", "", "CloudSaver token persistence failed: %s", redactText(saveErr))
+			}
+		}
+		return map[string]any{"success": err == nil, "data": items, "query": keyword}, nil
 	case "qas_files_list":
 		cookies := m.app.store.Cookies()
 		if len(cookies) == 0 {
@@ -843,13 +867,9 @@ func (m *MCPService) backendCall(name string, args map[string]any) (any, error) 
 		if len(cookies) == 0 {
 			return nil, errors.New("未配置夸克 Cookie")
 		}
-		fid := args["fid"]
-		var err error
-		if fid == nil || asString(fid) == "" {
-			fid, err = pathToFID(context.Background(), cookies[0], asString(args["path"]))
-			if err != nil {
-				return nil, err
-			}
+		fid, err := resolveDestructiveFID(context.Background(), cookies[0], args["fid"], asString(args["path"]))
+		if err != nil {
+			return nil, err
 		}
 		result, err := NewQuarkClient(cookies[0]).delete(context.Background(), []any{fid})
 		if err == nil {
@@ -861,13 +881,9 @@ func (m *MCPService) backendCall(name string, args map[string]any) (any, error) 
 		if len(cookies) == 0 {
 			return nil, errors.New("未配置夸克 Cookie")
 		}
-		fid := args["fid"]
-		var err error
-		if fid == nil || asString(fid) == "" {
-			fid, err = pathToFID(context.Background(), cookies[0], asString(args["path"]))
-			if err != nil {
-				return nil, err
-			}
+		fid, err := resolveDestructiveFID(context.Background(), cookies[0], args["fid"], asString(args["path"]))
+		if err != nil {
+			return nil, err
 		}
 		result, err := NewQuarkClient(cookies[0]).rename(context.Background(), fid, asString(args["file_name"]))
 		if err == nil {

@@ -124,7 +124,7 @@ func (a *App) runScheduled() {
 		a.logs.Add("WARNING", "", "scheduled run skipped: another task run is active")
 		return
 	}
-	if _, err := a.runs.Start(context.Background(), a.store.Tasks()); err != nil {
+	if _, err := a.runs.Start(context.Background(), a.store.Tasks(), true); err != nil {
 		a.logs.Add("ERROR", "", "scheduled run failed to start: %s", err)
 	}
 }
@@ -309,15 +309,20 @@ func (a *App) handleSuggestions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || !a.requireLogin(w, r) {
 		return
 	}
-	query := r.URL.Query().Get("q")
+	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	deep := r.URL.Query().Get("d") == "1" || strings.EqualFold(r.URL.Query().Get("d"), "true")
 	source := mapValue(a.store.Snapshot()["source"])
-	items, err := searchSuggestions(r.Context(), source, query, deep)
+	items, refreshedToken, err := searchSuggestions(r.Context(), source, query, deep)
+	if refreshedToken != "" {
+		if saveErr := a.store.SetCloudSaverToken(refreshedToken); saveErr != nil {
+			a.logs.Add("ERROR", "", "CloudSaver token persistence failed: %s", redactText(saveErr))
+		}
+	}
 	if err != nil && len(items) == 0 {
 		writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": redactText(err), "data": []any{}})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": items, "query": strings.TrimSpace(query), "deep": deep})
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": items, "query": query, "deep": deep})
 }
 
 func (a *App) handleShareDetail(w http.ResponseWriter, r *http.Request) {
@@ -387,13 +392,10 @@ func (a *App) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": "未配置夸克 Cookie"})
 		return
 	}
-	fid := payload["fid"]
-	if fid == nil || asString(fid) == "" {
-		fid, err = pathToFID(r.Context(), cookies[0], asString(payload["path"]))
-		if err != nil {
-			writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": redactText(err)})
-			return
-		}
+	fid, err := resolveDestructiveFID(r.Context(), cookies[0], payload["fid"], asString(payload["path"]))
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": redactText(err)})
+		return
 	}
 	response, err := NewQuarkClient(cookies[0]).delete(r.Context(), []any{fid})
 	if err != nil {
@@ -423,13 +425,10 @@ func (a *App) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": "未配置夸克 Cookie"})
 		return
 	}
-	fid := payload["fid"]
-	if fid == nil || asString(fid) == "" {
-		fid, err = pathToFID(r.Context(), cookies[0], asString(payload["path"]))
-		if err != nil {
-			writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": redactText(err)})
-			return
-		}
+	fid, err := resolveDestructiveFID(r.Context(), cookies[0], payload["fid"], asString(payload["path"]))
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"success": false, "message": redactText(err)})
+		return
 	}
 	response, err := NewQuarkClient(cookies[0]).rename(r.Context(), fid, name)
 	if err != nil {

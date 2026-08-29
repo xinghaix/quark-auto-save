@@ -28,6 +28,8 @@ RUN set -eux; \
 # regexes, plugins, and notification providers while the service boundary is Go.
 FROM python:3.13-alpine AS runtime
 
+RUN apk add --no-cache su-exec
+
 WORKDIR /app
 ENV TZ=Asia/Shanghai \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -45,15 +47,16 @@ COPY app/runtime /app/app/runtime
 COPY app/runtime/run.py /app/app/run.py
 COPY plugins /app/plugins
 COPY quark_auto_save.py notify.py quark_config.json /app/
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN python3 /app/app/_clean_plugins.py && rm -f /app/app/_clean_plugins.py \
     && addgroup -S -g 1001 qas \
     && adduser -S -D -u 1000 -G qas qas \
     && mkdir -p /app/config /media \
-    && chown -R qas:qas /app /media
+    && chown -R qas:qas /app /media \
+    && chmod 0755 /usr/local/bin/docker-entrypoint.sh
 
-USER qas
 EXPOSE 5005
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5005/login', timeout=3)" || exit 1
 
-ENTRYPOINT ["/usr/local/bin/quark-auto-save"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

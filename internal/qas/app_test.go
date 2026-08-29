@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -159,7 +161,7 @@ func TestGoBackendLoginConfigAndMCP(t *testing.T) {
 	if sessionID == "" || initializeBody["result"] == nil {
 		t.Fatalf("missing MCP session/result: %#v", initializeBody)
 	}
-	if initializeBody["result"].(map[string]any)["serverInfo"].(map[string]any)["version"] != "1.0.0" {
+	if initializeBody["result"].(map[string]any)["serverInfo"].(map[string]any)["version"] != "vtest" {
 		t.Fatalf("MCP server version drifted: %#v", initializeBody["result"])
 	}
 
@@ -298,7 +300,7 @@ func TestGoBackendStdio(t *testing.T) {
 	}
 }
 
-func TestRunManagerPerTaskConflicts(t *testing.T) {
+func TestRunManagerRejectsConcurrentWorkers(t *testing.T) {
 	script := filepath.Join(t.TempDir(), "worker.py")
 	if err := os.WriteFile(script, []byte("import time\nprint('worker', flush=True)\ntime.sleep(0.4)\n"), 0o700); err != nil {
 		t.Fatal(err)
@@ -307,22 +309,25 @@ func TestRunManagerPerTaskConflicts(t *testing.T) {
 	manager := NewRunManager(worker, NewLogBuffer(100))
 	taskA := []map[string]any{{"id": "task-a", "taskname": "A"}}
 	taskB := []map[string]any{{"id": "task-b", "taskname": "B"}}
-	first, err := manager.Start(context.Background(), taskA)
+	first, err := manager.Start(context.Background(), taskA, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := manager.Start(context.Background(), taskA); err == nil {
+	if _, err := manager.Start(context.Background(), taskA, false); err == nil {
 		t.Fatal("same task was allowed to run twice")
 	}
-	second, err := manager.Start(context.Background(), taskB)
-	if err != nil {
-		t.Fatalf("different task was blocked: %v", err)
+	if _, err := manager.Start(context.Background(), taskB, false); err == nil {
+		t.Fatal("different task overlapped an active worker")
 	}
-	if _, err := manager.Start(context.Background(), nil); err == nil {
-		t.Fatal("run-all was allowed while tasks were active")
+	if _, err := manager.Start(context.Background(), nil, false); err == nil {
+		t.Fatal("run-all was allowed while a worker was active")
 	}
 	if _, err := manager.Wait(context.Background(), asString(first["run_id"])); err != nil {
 		t.Fatal(err)
+	}
+	second, err := manager.Start(context.Background(), taskB, false)
+	if err != nil {
+		t.Fatalf("follow-up task was blocked: %v", err)
 	}
 	if _, err := manager.Wait(context.Background(), asString(second["run_id"])); err != nil {
 		t.Fatal(err)
@@ -357,5 +362,232 @@ func TestTaskMutationsRemainVisibleInMemory(t *testing.T) {
 	}
 	if len(app.store.Tasks()) != 4 {
 		t.Fatalf("deleted task remains visible: %#v", app.store.Tasks())
+	}
+}
+
+type captureRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f captureRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestQuarkClientKeepsAccountCookieForNonShareRequests(t *testing.T) {
+	cookie := "kps=abc+def; sign=signature; vcode=code; __uid=user"
+	var captured *http.Request
+	client := NewQuarkClient(cookie)
+	client.client = &http.Client{Transport: captureRoundTripper(func(r *http.Request) (*http.Response, error) {
+		captured = r
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"code":0}`)),
+			Request:    r,
+		}, nil
+	})}
+	if got := matchMParam(cookie)["kps"]; got != "abc+def" {
+		t.Fatalf("mparam plus was decoded: %q", got)
+	}
+	if _, _, err := client.request(context.Background(), http.MethodGet, "/1/clouddrive/file/sort", url.Values{}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if captured == nil || captured.Header.Get("Cookie") != cookie {
+		t.Fatalf("account cookie missing from non-share request: %#v", captured)
+	}
+
+	if _, _, err := client.request(context.Background(), http.MethodGet, "/1/clouddrive/share/sharepage/detail", url.Values{}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if captured == nil || captured.URL.Host != "drive-m.quark.cn" || captured.Header.Get("Cookie") != "" {
+		t.Fatalf("share request did not use mobile transport safely: %#v", captured)
+	}
+	if got := captured.URL.Query().Get("kps"); got != "abc+def" {
+		t.Fatalf("share kps plus was lost: raw=%q got=%q", captured.URL.RawQuery, got)
+	}
+}
+
+func TestDestructiveFileTargetMustBeExplicit(t *testing.T) {
+	invalid := []struct {
+		fid  any
+		path string
+	}{
+		{nil, ""},
+		{nil, "/"},
+		{"0", "/ignored"},
+		{float64(0), ""},
+		{true, ""},
+		{float64(1.5), ""},
+		{[]any{"fid"}, ""},
+	}
+	for _, item := range invalid {
+		if _, err := resolveDestructiveFID(context.Background(), "cookie", item.fid, item.path); err == nil {
+			t.Fatalf("invalid destructive target accepted: fid=%#v path=%q", item.fid, item.path)
+		}
+	}
+	if got, err := resolveDestructiveFID(context.Background(), "cookie", "fid-1", ""); err != nil || asString(got) != "fid-1" {
+		t.Fatalf("valid fid rejected: got=%#v err=%v", got, err)
+	}
+}
+
+func TestHTTPDestructiveHandlersRejectRootTargets(t *testing.T) {
+	app := testApp(t)
+	if err := app.store.Update(map[string]any{"cookie": []any{"kps=abc+def; sign=signature; vcode=code"}}); err != nil {
+		t.Fatal(err)
+	}
+	token := asString(app.store.DataForUI()["api_token"])
+	for _, endpoint := range []string{"/delete_file", "/rename_file"} {
+		req := httptest.NewRequest(http.MethodPost, endpoint+"?token="+url.QueryEscape(token), strings.NewReader(`{"path":"/"}`))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		app.Handler().ServeHTTP(recorder, req)
+		var body map[string]any
+		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if recorder.Code != http.StatusOK || asBoolDefault(body["success"], true) {
+			t.Fatalf("%s accepted root target: status=%d body=%#v", endpoint, recorder.Code, body)
+		}
+	}
+}
+
+func TestRunManagerStreamSharesManagedRunGate(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "worker.py")
+	if err := os.WriteFile(script, []byte("import time\nprint('worker', flush=True)\ntime.sleep(0.3)\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	manager := NewRunManager(worker, NewLogBuffer(100))
+	completed := make(chan struct{})
+	manager.SetOnComplete(func() { close(completed) })
+	lineSeen := make(chan struct{})
+	streamDone := make(chan error, 1)
+	go func() {
+		streamDone <- manager.Stream(context.Background(), nil, false, nil, nil, func(string) error {
+			select {
+			case <-lineSeen:
+			default:
+				close(lineSeen)
+			}
+			return nil
+		})
+	}()
+	select {
+	case <-lineSeen:
+	case <-time.After(time.Second):
+		t.Fatal("manual stream did not start")
+	}
+	if _, err := manager.Start(context.Background(), []map[string]any{{"id": "task-a"}}, false); err == nil {
+		t.Fatal("managed run overlapped an active manual stream")
+	}
+	if err := <-streamDone; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-completed:
+	case <-time.After(time.Second):
+		t.Fatal("manual stream did not invoke completion callback")
+	}
+	if manager.Busy() {
+		t.Fatal("manager remained busy after manual stream completion")
+	}
+}
+
+func TestRunManagerConfigModeLeavesTaskListUnset(t *testing.T) {
+	t.Setenv("TASKLIST", "stale-task-context")
+	output := filepath.Join(t.TempDir(), "tasklist.txt")
+	script := filepath.Join(t.TempDir(), "worker.py")
+	program := "import os\nfrom pathlib import Path\nPath(" + strconv.Quote(output) + ").write_text(os.environ.get('TASKLIST', '<unset>'))\n"
+	if err := os.WriteFile(script, []byte(program), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	manager := NewRunManager(worker, NewLogBuffer(100))
+	run, err := manager.Start(context.Background(), []map[string]any{{"id": "task-a"}}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Wait(context.Background(), asString(run["run_id"])); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "<unset>" {
+		t.Fatalf("config-mode worker received TASKLIST: %q", data)
+	}
+}
+
+func TestWorkerExplicitTestContextIsolated(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "worker-env.txt")
+	script := filepath.Join(t.TempDir(), "worker.py")
+	program := "import os\nfrom pathlib import Path\nPath(" + strconv.Quote(output) + ").write_text(os.environ['COOKIE'] + '|' + os.environ['PUSH_CONFIG'] + '|' + os.environ['QUARK_TEST'])\n"
+	if err := os.WriteFile(script, []byte(program), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	manager := NewRunManager(worker, NewLogBuffer(100))
+	if err := manager.Stream(context.Background(), nil, true, []string{"account-cookie"}, map[string]any{"enabled": true}, func(string) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != `["account-cookie"]|{"enabled":true}|true` {
+		t.Fatalf("explicit worker context was not isolated: %q", data)
+	}
+}
+
+func TestConfigCompatibilityDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config", "quark_config.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := `{"cookie":[],"plugins":{"emby":{"url":"","token":""},"custom":{"enabled":true,"secret":"keep-me"}},"magic_regex":{},"tasklist":[{"taskname":"legacy","shareurl":"https://pan.quark.cn/s/example","savepath":"/legacy","replace":"$TASKNAME.S01E01.mp4"}]}`
+	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := NewConfigStore(path, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tasks := store.Tasks()
+	if len(tasks) != 1 || asString(tasks[0]["replace"]) != "{TASKNAME}.S01E01.mp4" {
+		t.Fatalf("legacy replacement was not migrated: %#v", tasks)
+	}
+	data := store.DataForUI()
+	if len(mapValue(data["magic_regex"])) == 0 || len(mapValue(data["plugins"])) < 6 || len(mapValue(data["task_plugins_config_default"])) < 6 {
+		t.Fatalf("compatibility defaults missing: %#v", data)
+	}
+	custom := mapValue(mapValue(data["plugins"])["custom"])
+	if !asBoolDefault(custom["enabled"], false) || asString(custom["secret"]) != "keep-me" {
+		t.Fatalf("custom plugin configuration was dropped: %#v", data["plugins"])
+	}
+	if err := store.SetCloudSaverToken("refreshed-token"); err != nil {
+		t.Fatal(err)
+	}
+	if got := asString(mapValue(mapValue(store.Snapshot()["source"])["cloudsaver"])["token"]); got != "refreshed-token" {
+		t.Fatalf("CloudSaver token was not persisted: %q", got)
+	}
+	added, err := store.AddTask(map[string]any{"taskname": "new", "shareurl": "https://pan.quark.cn/s/example", "savepath": "/new"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mapValue(added["addition"])) < 6 {
+		t.Fatalf("new task did not receive plugin defaults: %#v", added)
+	}
+}
+
+func TestMCPRejectsNonObjectArgumentsAndReturnsToolErrors(t *testing.T) {
+	app := testApp(t)
+	invalid := app.mcp.callTool(1, map[string]any{"name": "qas_tasks_list", "arguments": "not-an-object"})
+	if invalid["error"] == nil || invalid["result"] != nil {
+		t.Fatalf("non-object MCP arguments accepted: %#v", invalid)
+	}
+	failed := app.mcp.callTool(2, map[string]any{"name": "qas_tasks_get", "arguments": map[string]any{}})
+	result := mapValue(failed["result"])
+	if failed["error"] != nil || !asBoolDefault(result["isError"], false) {
+		t.Fatalf("backend tool failure was not returned as tool error: %#v", failed)
 	}
 }

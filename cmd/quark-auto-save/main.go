@@ -44,18 +44,23 @@ func main() {
 		WriteTimeout:      0,
 		IdleTimeout:       120 * time.Second,
 	}
+	serverErr := make(chan error, 1)
 	go func() {
 		log.Printf("quark-auto-save Go backend %s listening on %s", app.Version(), app.Address())
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("HTTP server stopped: %v", err)
-		}
+		serverErr <- server.ListenAndServe()
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-	app.Shutdown()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	_ = server.Shutdown(ctx)
+	select {
+	case err := <-serverErr:
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server stopped: %v", err)
+		}
+	case <-stop:
+		app.Shutdown()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = server.Shutdown(ctx)
+	}
 }

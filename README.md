@@ -92,6 +92,8 @@ docker run -d \
   ghcr.io/xinghaix/quark-auto-save:latest
 ```
 
+镜像启动时会先为 `/app/config` 和 `/media` 修正 bind mount 的目录权限，随后立即降权为容器内的 `qas`（UID 1000、GID 1001）运行 Go 服务。不要再通过 `--user` 覆盖容器用户，否则挂载目录可能无法写入。
+
 仓库内提供了可直接使用的 `docker-compose.yml`：
 
 ```shell
