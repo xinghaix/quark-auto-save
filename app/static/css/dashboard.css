@@ -86,30 +86,6 @@ a:hover { color: var(--primary-hover); }
 .nav-bottom p { margin-bottom: 8px; }
 .nav-bottom a { color: var(--muted); text-decoration: none; }
 .nav-bottom a:hover { color: var(--primary); }
-.qrcode-tutorial {
-  display: none;
-  left: 50%;
-  bottom: 100%;
-  max-width: 100%;
-  margin-bottom: 10px;
-  padding: 10px;
-  transform: translateX(-50%);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  text-align: center;
-  z-index: 1000;
-}
-.qrcode-tutorial img { max-width: 100%; height: auto; }
-
-main.qas-main {
-  width: auto;
-  max-width: var(--qas-content-max);
-  margin-left: var(--qas-sidebar-width) !important;
-  margin-right: 0 !important;
-  padding: 28px clamp(20px, 3vw, 48px) 90px;
-}
-
 .qas-card {
   min-width: 0;
   margin-bottom: 20px;

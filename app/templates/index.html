@@ -85,14 +85,6 @@
             </li>
           </ul>
           <div class="nav-bottom text-center">
-            <p class="position-relative" hidden>
-              <b class="text-success"><i class="bi bi-record-circle me-1"></i>视频教程</b>
-              <span class="position-absolute qrcode-tutorial">
-                使用夸克扫码查看<br>
-                <img src="./static/img/qrcode_tutorial.png">
-              </span>
-            </p>
-            <p><a target="_blank" rel="noopener noreferrer" href="https://github.com/Cp0204/quark-auto-save/wiki"><i class="bi bi-book me-1"></i>{{ t('wiki') }}</a></p>
             <p><a href="./static/js/qas.addtask.user.js"><i class="bi bi-cloud-plus-fill me-1"></i>{{ t('userscript') }}</a></p>
             <p><a target="_blank" rel="noopener noreferrer" href="https://github.com/xinghaix/quark-auto-save"><i class="bi bi-github me-1"></i>{{ t('github') }}</a></p>
             <p><span>{{ version }}</span><sup v-if="latestVersion && latestVersion !== version"><span class="position-absolute badge rounded-pill text-bg-danger">{{ latestVersion }}</span></sup></p>
@@ -138,7 +130,6 @@
               </div>
               <p class="qas-help">
                 {{ t('cookieHelp1') }}
-                <a href="https://github.com/Cp0204/quark-auto-save/wiki/使用技巧集锦#每日签到领空间" target="_blank" rel="noopener noreferrer">{{ t('wikiCookie') }}</a>
                 <br>{{ t('cookieHelp2') }}
               </p>
               <div v-for="(value, index) in formData.cookie" :key="'ck'+index" class="input-group mb-2">
@@ -157,7 +148,6 @@
             <div class="qas-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-clock"></i> {{ t('crontab') }}</h2>
-                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="https://tool.lu/crontab/">{{ t('crontabHint') }}</a>
               </div>
               <p class="qas-help">{{ t('crontabHelp') }}</p>
               <div class="mb-2">
@@ -179,7 +169,7 @@
                   <button type="button" class="btn btn-success btn-sm" :title="t('notifyTest')" @click="testPush()"><i class="bi bi-lightning"></i> {{ t('notifyTest') }}</button>
                 </div>
               </div>
-              <p class="qas-help">{{ t('notifyHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/通知推送服务配置" target="_blank" rel="noopener noreferrer">{{ t('notifyWiki') }}</a></p>
+              <p class="qas-help">{{ t('notifyHelp') }}</p>
               <div class="input-group mb-3">
                 <select class="form-select" v-model="newPushKey">
                   <option value="">{{ t('notifyChannel') }}</option>
@@ -192,9 +182,6 @@
               </div>
               <div v-for="(value, key) in formData.push_config" :key="key" class="input-group mb-2">
                 <span class="input-group-text">{{ key }}</span>
-                <template v-if="(key == 'DEER_KEY' || key == 'PUSH_KEY')">
-                  <a class="btn btn-warning" target="_blank" rel="noopener noreferrer" href="https://sct.ftqq.com/r/13249" title="Server酱推荐计划" aria-label="Server酱推荐计划"><i class="bi bi-award"></i></a>
-                </template>
                 <input type="text" v-model="formData.push_config[key]" class="form-control">
 
                   <button type="button" class="btn btn-outline-danger" @click="removePush(key)">{{ t('remove') }}</button>
@@ -205,7 +192,6 @@
             <div class="qas-card" v-if="Object.keys(getAvailablePlugins(formData.plugins)).length">
               <div class="qas-card-head">
                 <h2><i class="bi bi-plug"></i> {{ t('plugins') }}</h2>
-                <a class="btn btn-sm btn-outline-secondary" href="https://github.com/Cp0204/quark-auto-save/wiki/插件配置" target="_blank" rel="noopener noreferrer">{{ t('pluginsWiki') }}</a>
               </div>
               <p class="qas-help">{{ t('pluginsHelp') }}</p>
               <div v-for="(plugin, pluginName) in getAvailablePlugins(formData.plugins)" :key="pluginName">
@@ -241,7 +227,7 @@
                 <h2><i class="bi bi-magic"></i> {{ t('magic') }}</h2>
                 <button type="button" class="btn btn-outline-primary btn-sm" @click="addMagicRegex()">{{ t('add') }}</button>
               </div>
-              <p class="qas-help">{{ t('magicHelp') }} <a href="https://github.com/Cp0204/quark-auto-save/wiki/正则处理教程#21-魔法匹配" target="_blank" rel="noopener noreferrer">{{ t('magicWiki') }}</a></p>
+              <p class="qas-help">{{ t('magicHelp') }}</p>
               <div v-for="(value, key) in formData.magic_regex" :key="key" class="mb-2">
                 <div class="input-group">
                   <span class="input-group-text">{{ t('magicName') }}</span>
@@ -259,7 +245,6 @@
             <div class="qas-card">
               <div class="qas-card-head">
                 <h2><i class="bi bi-link-45deg"></i> {{ t('api') }}</h2>
-                <a class="btn btn-sm btn-outline-secondary" href="https://github.com/Cp0204/quark-auto-save/wiki/API接口" target="_blank" rel="noopener noreferrer">{{ t('apiWiki') }}</a>
               </div>
               <p class="qas-help">{{ t('apiHelp') }}</p>
               <div class="input-group">
@@ -320,7 +305,6 @@
                     <i class="bi bi-caret-right-fill"></i> CloudSaver
                     <span class="text-muted small d-block mt-1 ms-3">{{ t('cloudsaverHelp') }}</span>
                   </button>
-                  <a class="qas-collapse-help badge rounded-pill text-bg-light" href="https://github.com/Cp0204/quark-auto-save/wiki/CloudSaver搜索源" target="_blank" rel="noopener noreferrer" aria-label="CloudSaver documentation">?</a>
                 </div>
               </div>
               <div class="collapse show ms-3" id="collapse_cloudsaver">
@@ -355,7 +339,6 @@
                     <i class="bi bi-caret-right-fill"></i> PanSou
                     <span class="text-muted small d-block mt-1 ms-3">{{ t('pansouHelp') }}</span>
                   </button>
-                  <a class="qas-collapse-help badge rounded-pill text-bg-light" href="https://github.com/fish2018/pansou" target="_blank" rel="noopener noreferrer" aria-label="PanSou documentation">?</a>
                 </div>
               </div>
               <div class="collapse show ms-3" id="collapse_pansou">

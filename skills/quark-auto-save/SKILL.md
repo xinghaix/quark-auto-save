@@ -136,10 +136,6 @@ python3 {baseDir}/scripts/qas_client.py add-task '{"taskname": "Black Mirror", "
 
 ## `pattern` & `replace`
 
-**WIKI（上游通用文档，Fork 暂未复制 Wiki）：**
-- RegexRename: https://github.com/Cp0204/quark-auto-save/wiki/正则处理教程
-- MagicRegex: https://github.com/Cp0204/quark-auto-save/wiki/魔法匹配和魔法变量
-
 | Pattern | Replace | Result |
 |---|---|---|
 | `.*` | | Save all files |
