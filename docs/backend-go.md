@@ -55,7 +55,7 @@ go test ./...
 1. `golang:1.27-alpine` 编译带 `BUILD_SHA`/`BUILD_TAG` 的静态 Go 二进制；
 2. `python:3.13-alpine` 提供 worker 兼容层，并复制 Go 服务、页面、SDK、插件、转存脚本和预览 helper。
 
-镜像入口是 `/usr/local/bin/quark-auto-save`；历史命令 `python3 /app/app/run.py --mcp-stdio` 通过 shim 转发到 Go。运行层以 UID 1000/GID 1001 非 root 运行。多架构发布由 `.github/workflows/docker-publish.yml` 负责，目标为 `linux/amd64`、`linux/arm64` 和 `linux/arm/v7`。
+镜像入口是 `docker-entrypoint.sh`：root 启动时修正 `/app/config` 权限并降权为 `qas`（UID 1000/GID 1001），再执行 `/usr/local/bin/quark-auto-save`。历史命令 `python3 /app/app/run.py --mcp-stdio` 通过 shim 转发到 Go。多架构发布由 `.github/workflows/docker-publish.yml` 负责，目标为 `linux/amd64`、`linux/arm64` 和 `linux/arm/v7`。
 
 ## 兼容性和安全
 
