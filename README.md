@@ -227,7 +227,7 @@ go test ./...
 
 在有新转存时，可通过插件刷新媒体库或生成 `.strm` 文件。
 
-媒体库模块以插件方式集成，扩展代码位于 [plugins](./plugins) 目录。
+媒体库联动（Emby/Plex/Alist/Aria2 等）已编译进二进制，用 `PLUGIN_FLAGS` 禁用，例如 `-emby,-aria2`。
 
 ## 声明
 
