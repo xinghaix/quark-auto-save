@@ -6,7 +6,7 @@
 
 夸克网盘签到、自动转存、命名整理、推送提醒和媒体库联动。
 
-服务端已迁移为 **Go 1.27**，提供 WebUI、REST API、MCP 和定时调度；现有 Python 转存链作为兼容 worker 保留，以维持 Python 正则、插件和通知渠道的行为。
+服务端是 **Go 1.27** 静态二进制：WebUI、REST API、MCP、定时调度、转存、签到、插件和通知都在同一进程内。Docker 镜像基于纯 Alpine，不再附带 Python。
 
 > **本仓库说明（xinghaix fork）**
 >
@@ -57,7 +57,7 @@
 - 媒体库整合
   - [x] 根据任务名触发媒体库处理
   - [x] 追更或整理后自动刷新媒体库
-  - [x] 插件模块化，允许自行开发和挂载[插件](./plugins)
+  - [x] 内置媒体库插件（Emby/Plex/Alist/Aria2 等），可用 `PLUGIN_FLAGS` 禁用
 
 - 其它
   - [x] 每日签到领空间
@@ -143,8 +143,6 @@ mcp_servers:
       QAS_MCP_API_KEY: "<MCP_API_KEY>"
 ```
 
-历史兼容命令 `python3 /app/app/run.py --mcp-stdio` 在镜像内由 shim 转发到同一个 Go MCP 服务；新配置优先直接使用 Go 二进制。
-
 当前工具包括任务查询/创建/修改/删除/运行、运行状态与日志查询、电视剧/资源搜索、分享详情、夸克文件浏览/删除/重命名、脱敏配置读取和系统状态查询。默认只开放读取类权限；删除、重命名、修改和运行等写操作必须在设置中心显式开启。MCP API key 只保存哈希，不会通过 `/data` 或 MCP 返回；传统 WebUI/API 的 `api_token` 仍按兼容格式派生，二者不是同一个认证域。
 
 浏览器跨域调用默认关闭；确需使用时，通过环境变量 `MCP_ALLOWED_ORIGINS` 指定逗号分隔的完整 Origin，禁止使用 `*`。legacy SSE 建议同时设置 `MCP_PUBLIC_ORIGIN`，避免 endpoint URL 依赖未验证的 Host 头。
@@ -161,9 +159,6 @@ mcp_servers:
 | `CONFIG_TEMPLATE_PATH`| `./quark_config.json` | 缺省配置模板路径                    |
 | `STATIC_DIR`          | `./app/static` | 前端静态资源路径                       |
 | `TEMPLATE_DIR`        | `./app/templates` | HTML 模板路径                        |
-| `PYTHON_PATH`         | `python3`  | 兼容 worker 的 Python 解释器              |
-| `SCRIPT_PATH`         | `./quark_auto_save.py` | 兼容 worker 脚本路径                |
-| `PREVIEW_SCRIPT_PATH` | `./app/runtime/preview.py` | 复杂正则预览 helper 路径       |
 | `PLUGIN_FLAGS`        |            | 插件标志，如 `-emby,-aria2` 禁用某些插件  |
 | `TASK_TIMEOUT`        | `1800`     | 任务执行超时时间（秒），超时则任务结束    |
 | `MCP_ALLOWED_ORIGINS` | 空         | MCP 浏览器跨域允许的完整 Origin，逗号分隔  |
@@ -194,7 +189,7 @@ go test ./...
 ./bin/quark-auto-save
 ```
 
-Go 服务端通过受控子进程调用 `quark_auto_save.py` 完成现有转存算法、Python 正则、插件和通知；因此本地运行任务仍需要 `requirements.txt` 中的 Python 依赖。Docker 镜像会自动安装这些兼容依赖，但 HTTP、MCP、配置和调度入口均由 Go 1.27 二进制提供。详细边界见 [Go 后端架构](docs/backend-go.md)。
+本地只需 Go 1.27。Docker 镜像是静态二进制 + Alpine。正则使用 Python 兼容方言（含 lookaround / 反引用）。详细边界见 [Go 后端架构](docs/backend-go.md)。
 
 <details open>
 <summary>WebUI 预览</summary>
@@ -218,7 +213,7 @@ Go 服务端通过受控子进程调用 `quark_auto_save.py` 完成现有转存�
 | `$TV`                                  |                         | [魔法匹配](#魔法匹配)剧集文件                                          |
 | `^(\d+)\.mp4`                          | `{TASKNAME}.S02E\1.mp4` | 01.mp4 → 任务名.S02E01.mp4                                             |
 
-正则匹配示例见本节；任务由兼容 worker 处理，继续支持 Python 正则表达式。
+正则匹配示例见本节；任务由 Go 引擎处理，正则保持 Python 兼容方言。
 
 > [!TIP]
 >

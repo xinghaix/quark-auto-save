@@ -64,15 +64,18 @@ func matchMParam(cookie string) map[string]string {
 
 func (q *QuarkClient) request(ctx context.Context, method, path string, params url.Values, payload any, headers http.Header) (map[string]any, http.Header, error) {
 	base := quarkBaseURL
-	if len(q.mparam) == 3 && strings.Contains(path, "share") {
+	mobile := len(q.mparam) == 3 && (strings.Contains(path, "share") || strings.Contains(path, "capacity/growth"))
+	if mobile {
 		base = quarkMobileURL
 		if params == nil {
 			params = url.Values{}
 		}
-		for key, value := range map[string]string{
-			"device_model": "M2011K2C", "entry": "default_clouddrive", "_t_group": "0%3A_s_vp%3A1", "dmn": "Mi%2B11", "fr": "android", "pf": "3300", "bi": "35937", "ve": "7.4.5.680", "ss": "411x875", "mi": "M2011K2C", "nt": "5", "nw": "0", "kt": "4", "pr": "ucpro", "sv": "release", "dt": "phone", "data_from": "ucapi", "app": "clouddrive", "kkkk": "1",
-		} {
-			params.Set(key, value)
+		if strings.Contains(path, "share") {
+			for key, value := range map[string]string{
+				"device_model": "M2011K2C", "entry": "default_clouddrive", "_t_group": "0%3A_s_vp%3A1", "dmn": "Mi%2B11", "fr": "android", "pf": "3300", "bi": "35937", "ve": "7.4.5.680", "ss": "411x875", "mi": "M2011K2C", "nt": "5", "nw": "0", "kt": "4", "pr": "ucpro", "sv": "release", "dt": "phone", "data_from": "ucapi", "app": "clouddrive", "kkkk": "1",
+			} {
+				params.Set(key, value)
+			}
 		}
 		for key, value := range q.mparam {
 			params.Set(key, value)
@@ -96,7 +99,7 @@ func (q *QuarkClient) request(ctx context.Context, method, path string, params u
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", quarkUserAgent)
-	if q.cookie != "" && !(len(q.mparam) == 3 && strings.Contains(path, "share")) {
+	if q.cookie != "" && !mobile {
 		req.Header.Set("Cookie", q.cookie)
 	}
 	for key, values := range headers {

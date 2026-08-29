@@ -11,11 +11,22 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
+
+func slowTestWorker(d time.Duration) *Worker {
+	return &Worker{timeout: 2 * time.Second, logs: NewLogBuffer(100), run: func(ctx context.Context, _ []map[string]any, _ bool, _ []string, _ map[string]any, onLine func(string)) (int, bool, error) {
+		onLine("worker")
+		select {
+		case <-ctx.Done():
+			return -1, true, ctx.Err()
+		case <-time.After(d):
+			return 0, false, nil
+		}
+	}}
+}
 
 func testApp(t *testing.T) *App {
 	t.Helper()
@@ -301,11 +312,7 @@ func TestGoBackendStdio(t *testing.T) {
 }
 
 func TestRunManagerRejectsConcurrentWorkers(t *testing.T) {
-	script := filepath.Join(t.TempDir(), "worker.py")
-	if err := os.WriteFile(script, []byte("import time\nprint('worker', flush=True)\ntime.sleep(0.4)\n"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	worker := slowTestWorker(400 * time.Millisecond)
 	manager := NewRunManager(worker, NewLogBuffer(100))
 	taskA := []map[string]any{{"id": "task-a", "taskname": "A"}}
 	taskB := []map[string]any{{"id": "task-b", "taskname": "B"}}
@@ -435,7 +442,11 @@ func TestHTTPDestructiveHandlersRejectRootTargets(t *testing.T) {
 	}
 	token := asString(app.store.DataForUI()["api_token"])
 	for _, endpoint := range []string{"/delete_file", "/rename_file"} {
-		req := httptest.NewRequest(http.MethodPost, endpoint+"?token="+url.QueryEscape(token), strings.NewReader(`{"path":"/"}`))
+		payload := `{"path":"/"}`
+		if endpoint == "/rename_file" {
+			payload = `{"path":"/","file_name":"renamed"}`
+		}
+		req := httptest.NewRequest(http.MethodPost, endpoint+"?token="+url.QueryEscape(token), strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 		app.Handler().ServeHTTP(recorder, req)
@@ -446,15 +457,14 @@ func TestHTTPDestructiveHandlersRejectRootTargets(t *testing.T) {
 		if recorder.Code != http.StatusOK || asBoolDefault(body["success"], true) {
 			t.Fatalf("%s accepted root target: status=%d body=%#v", endpoint, recorder.Code, body)
 		}
+		if strings.Contains(asString(body["message"]), "缺失必要字段") {
+			t.Fatalf("%s failed field check instead of root guard: %#v", endpoint, body)
+		}
 	}
 }
 
 func TestRunManagerStreamSharesManagedRunGate(t *testing.T) {
-	script := filepath.Join(t.TempDir(), "worker.py")
-	if err := os.WriteFile(script, []byte("import time\nprint('worker', flush=True)\ntime.sleep(0.3)\n"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	worker := slowTestWorker(300 * time.Millisecond)
 	manager := NewRunManager(worker, NewLogBuffer(100))
 	completed := make(chan struct{})
 	manager.SetOnComplete(func() { close(completed) })
@@ -492,14 +502,11 @@ func TestRunManagerStreamSharesManagedRunGate(t *testing.T) {
 }
 
 func TestRunManagerConfigModeLeavesTaskListUnset(t *testing.T) {
-	t.Setenv("TASKLIST", "stale-task-context")
-	output := filepath.Join(t.TempDir(), "tasklist.txt")
-	script := filepath.Join(t.TempDir(), "worker.py")
-	program := "import os\nfrom pathlib import Path\nPath(" + strconv.Quote(output) + ").write_text(os.environ.get('TASKLIST', '<unset>'))\n"
-	if err := os.WriteFile(script, []byte(program), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	var got []map[string]any
+	worker := &Worker{timeout: 2 * time.Second, logs: NewLogBuffer(100), run: func(_ context.Context, tasks []map[string]any, _ bool, _ []string, _ map[string]any, _ func(string)) (int, bool, error) {
+		got = tasks
+		return 0, false, nil
+	}}
 	manager := NewRunManager(worker, NewLogBuffer(100))
 	run, err := manager.Start(context.Background(), []map[string]any{{"id": "task-a"}}, true)
 	if err != nil {
@@ -508,33 +515,25 @@ func TestRunManagerConfigModeLeavesTaskListUnset(t *testing.T) {
 	if _, err := manager.Wait(context.Background(), asString(run["run_id"])); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(output)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data) != "<unset>" {
-		t.Fatalf("config-mode worker received TASKLIST: %q", data)
+	if got != nil {
+		t.Fatalf("config-mode worker received tasks: %#v", got)
 	}
 }
 
 func TestWorkerExplicitTestContextIsolated(t *testing.T) {
-	output := filepath.Join(t.TempDir(), "worker-env.txt")
-	script := filepath.Join(t.TempDir(), "worker.py")
-	program := "import os\nfrom pathlib import Path\nPath(" + strconv.Quote(output) + ").write_text(os.environ['COOKIE'] + '|' + os.environ['PUSH_CONFIG'] + '|' + os.environ['QUARK_TEST'])\n"
-	if err := os.WriteFile(script, []byte(program), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	worker := &Worker{python: "python3", script: script, config: script, timeout: 2 * time.Second, logs: NewLogBuffer(100)}
+	var testMode bool
+	var cookies []string
+	var push map[string]any
+	worker := &Worker{timeout: 2 * time.Second, logs: NewLogBuffer(100), run: func(_ context.Context, _ []map[string]any, test bool, c []string, p map[string]any, _ func(string)) (int, bool, error) {
+		testMode, cookies, push = test, c, p
+		return 0, false, nil
+	}}
 	manager := NewRunManager(worker, NewLogBuffer(100))
 	if err := manager.Stream(context.Background(), nil, true, []string{"account-cookie"}, map[string]any{"enabled": true}, func(string) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(output)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data) != `["account-cookie"]|{"enabled":true}|true` {
-		t.Fatalf("explicit worker context was not isolated: %q", data)
+	if !testMode || len(cookies) != 1 || cookies[0] != "account-cookie" || !asBoolDefault(push["enabled"], false) {
+		t.Fatalf("explicit worker context was not isolated: test=%v cookies=%v push=%v", testMode, cookies, push)
 	}
 }
 

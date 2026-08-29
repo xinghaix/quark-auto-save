@@ -11,7 +11,7 @@ services:
       WEBUI_USERNAME: "${WEBUI_USERNAME:-admin}"
       WEBUI_PASSWORD: "${WEBUI_PASSWORD:?set WEBUI_PASSWORD before starting}"
       TZ: "${TZ:-Asia/Shanghai}"
-      # Optional: disable selected Python compatibility plugins.
+      # Optional: disable selected plugins.
       # PLUGIN_FLAGS: "-emby,-aria2"
     volumes:
       - ./config:/app/config

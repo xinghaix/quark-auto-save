@@ -30,10 +30,9 @@ jobs:
         with:
           go-version: 1.27.x
           cache: true
-      - name: Check formatting and compatibility syntax
+      - name: Check formatting
         run: |
           test -z "$(gofmt -l cmd internal)"
-          python3 -m compileall -q app quark_auto_save.py notify.py plugins
       - name: Run Go tests and vet
         run: |
           go test ./...

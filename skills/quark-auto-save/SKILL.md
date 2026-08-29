@@ -19,7 +19,7 @@ metadata:
 
 Manage quark-auto-save tasks via CLI or MCP.
 
-服务端入口是 Go 1.27 二进制；Python 脚本仅作为兼容客户端/任务 worker，不是 Web 服务入口。
+服务端入口是 Go 1.27 二进制。`qas_client.py` 只是可选的 HTTP 客户端，不是服务端。
 
 QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接
 

@@ -34,8 +34,7 @@ var allowedConfigKeys = map[string]bool{
 	"magic_regex": true, "plugins": true, "source": true,
 }
 
-// These defaults mirror the compatibility worker's plugin declarations. The
-// Go control plane must expose them before the first Python worker run.
+// Built-in plugin defaults shown in the WebUI before the first run.
 var defaultPluginConfigs = map[string]any{
 	"emby": map[string]any{"url": "", "token": ""},
 	"fnv": map[string]any{
@@ -56,6 +55,10 @@ var defaultPluginConfigs = map[string]any{
 		"tips_alist_refresh": "该插件需与 alist 刷新插件配合使用，否则可能出现 alist 未刷新导致无法生成 strm 的问题！",
 		"url":                "", "token": "", "storage_id": "", "strm_save_dir": "/media", "strm_replace_host": "",
 	},
+	"plex":       map[string]any{"url": "", "token": "", "quark_root_path": ""},
+	"smartstrm":  map[string]any{"webhook": "", "strmtask": "", "xlist_path_fix": ""},
+	"alist":      map[string]any{"url": "", "token": "", "storage_id": ""},
+	"alist_strm": map[string]any{"url": "", "cookie": "", "config_id": ""},
 }
 
 var defaultTaskPluginConfigs = map[string]any{
@@ -239,6 +242,20 @@ func (s *ConfigStore) Reload() error {
 	ensureTaskIDs(s.data)
 	s.data["mcp"] = normalizeMCP(s.data["mcp"])
 	return nil
+}
+
+func (s *ConfigStore) Replace(data map[string]any) error {
+	if data == nil {
+		data = map[string]any{}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data = data
+	normalizeLegacyConfig(s.data)
+	s.applyRuntimeLocked()
+	ensureTaskIDs(s.data)
+	s.data["mcp"] = normalizeMCP(s.data["mcp"])
+	return s.saveLocked()
 }
 
 func (s *ConfigStore) Path() string { return s.path }

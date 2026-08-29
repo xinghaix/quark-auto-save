@@ -50,7 +50,7 @@ func NewApp(options Options) (*App, error) {
 		return nil, err
 	}
 	logs := NewLogBuffer(2000)
-	worker := NewWorker(configPath, logs)
+	worker := NewWorker(store, logs)
 	app := &App{
 		store:       store,
 		logs:        logs,

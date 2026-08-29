@@ -1,114 +1,55 @@
 package qas
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
 )
 
 type Worker struct {
-	python  string
-	script  string
-	config  string
+	run     func(context.Context, []map[string]any, bool, []string, map[string]any, func(string)) (int, bool, error)
+	engine  *Engine
 	timeout time.Duration
 	logs    *LogBuffer
 }
 
-func NewWorker(configPath string, logs *LogBuffer) *Worker {
-	python := os.Getenv("PYTHON_PATH")
-	if python == "" {
-		python = "python3"
-	}
-	script := os.Getenv("SCRIPT_PATH")
-	if script == "" {
-		script = "./quark_auto_save.py"
-	}
+func NewWorker(store *ConfigStore, logs *LogBuffer) *Worker {
 	timeout := 30 * time.Minute
 	if value := os.Getenv("TASK_TIMEOUT"); value != "" {
 		if seconds, err := time.ParseDuration(value + "s"); err == nil && seconds > 0 {
 			timeout = seconds
 		}
 	}
-	return &Worker{python: python, script: script, config: configPath, timeout: timeout, logs: logs}
-}
-
-func (w *Worker) command(ctx context.Context, tasks []map[string]any, test bool, cookies []string, pushConfig map[string]any) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, w.python, "-u", w.script, w.config)
-	env := make([]string, 0, len(os.Environ())+5)
-	for _, item := range os.Environ() {
-		key, _, _ := strings.Cut(item, "=")
-		switch key {
-		case "TASKLIST", "COOKIE", "PUSH_CONFIG", "QUARK_TEST", "PYTHONIOENCODING":
-			continue
-		default:
-			env = append(env, item)
-		}
-	}
-	env = append(env, "PYTHONIOENCODING=utf-8")
-	if tasks != nil {
-		if data, err := json.Marshal(tasks); err == nil {
-			env = append(env, "TASKLIST="+string(data))
-		}
-	}
-	if test {
-		if data, err := json.Marshal(cookies); err == nil {
-			env = append(env, "COOKIE="+string(data))
-		}
-		if data, err := json.Marshal(pushConfig); err == nil {
-			env = append(env, "PUSH_CONFIG="+string(data))
-		}
-		env = append(env, "QUARK_TEST=true")
-	}
-	cmd.Env = env
-	return cmd
+	return &Worker{timeout: timeout, logs: logs, engine: &Engine{store: store, logs: logs}}
 }
 
 func (w *Worker) Run(ctx context.Context, tasks []map[string]any, test bool, cookies []string, pushConfig map[string]any, onLine func(string)) (int, bool, error) {
 	if onLine == nil {
 		onLine = func(string) {}
 	}
-	if w.python == "" || w.script == "" {
-		return -1, false, errors.New("Python worker 未配置")
-	}
 	ctx, cancel := context.WithTimeout(ctx, w.timeout)
 	defer cancel()
-	cmd := w.command(ctx, tasks, test, cookies, pushConfig)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return -1, false, err
+	run := w.run
+	if run == nil && w.engine != nil {
+		run = w.engine.Run
 	}
-	cmd.Stderr = cmd.Stdout
-	if err := cmd.Start(); err != nil {
-		return -1, false, err
+	if run == nil {
+		return -1, false, errors.New("worker 未配置")
 	}
-	scanner := bufio.NewScanner(stdout)
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-	for scanner.Scan() {
-		line := redactText(strings.TrimRight(scanner.Text(), "\r\n"))
+	code, timedOut, err := run(ctx, tasks, test, cookies, pushConfig, func(line string) {
+		line = redactText(strings.TrimRight(line, "\r\n"))
 		if line != "" {
 			onLine(line)
 		}
+	})
+	if ctx.Err() == context.DeadlineExceeded {
+		timedOut = true
 	}
-	scanErr := scanner.Err()
-	waitErr := cmd.Wait()
-	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
-	if scanErr != nil {
-		return -1, timedOut, scanErr
-	}
-	if waitErr == nil {
-		return 0, timedOut, nil
-	}
-	if exitErr := new(exec.ExitError); errors.As(waitErr, &exitErr) {
-		return exitErr.ExitCode(), timedOut, nil
-	}
-	return -1, timedOut, waitErr
+	return code, timedOut, err
 }
 
 type RunRecord struct {
@@ -144,7 +85,7 @@ func (m *RunManager) SetOnComplete(callback func()) {
 
 func (m *RunManager) Start(ctx context.Context, tasks []map[string]any, fromConfig bool) (map[string]any, error) {
 	m.mu.Lock()
-	// ponytail: one worker at a time; the Python process rewrites the whole config.json.
+	// ponytail: one worker at a time; the engine rewrites the whole config.json.
 	if len(m.activeKeys) > 0 {
 		m.mu.Unlock()
 		return nil, errors.New("任务与已有运行冲突")
@@ -163,8 +104,7 @@ func (m *RunManager) Start(ctx context.Context, tasks []map[string]any, fromConf
 func (m *RunManager) execute(parent context.Context, id string, tasks []map[string]any, keys []string, fromConfig bool) {
 	workerTasks := tasks
 	if fromConfig {
-		// An all-task run must leave TASKLIST unset so the Python worker keeps
-		// its normal multi-account sign-in behavior.
+		// An all-task run passes nil tasks so every account still signs in.
 		workerTasks = nil
 	}
 	code, timedOut, err := m.worker.Run(parent, workerTasks, false, nil, nil, func(line string) {

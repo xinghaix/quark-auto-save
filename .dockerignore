@@ -7,9 +7,8 @@ __pycache__
 .env.*
 /config
 /media
-app/run.py
-app/mcp.py
 tests
 docs
 skills
 img
+plugins
