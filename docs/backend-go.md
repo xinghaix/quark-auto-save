@@ -13,7 +13,7 @@
 - 内置插件（Emby/Plex/Alist/Aria2/飞牛/SmartStrm/云解压）和多渠道通知；
 - CloudSaver 与 PanSou 搜索源聚合。
 
-镜像不再包含 Python。
+镜像不再包含 Python，也不再加载 `plugins/*.py`。
 
 ## 目录
 
@@ -22,9 +22,12 @@ cmd/quark-auto-save/main.go  # 进程入口、信号和优雅退出
 internal/qas/app.go          # HTTP 路由、模板渲染、REST handlers
 internal/qas/engine.go       # 签到、转存、任务生命周期
 internal/qas/rename.go       # MagicRename
+internal/qas/preview.go      # 分享预览
 internal/qas/plugin.go       # 内置插件
+internal/qas/plugin_more.go  # Alist/Aria2/飞牛等
 internal/qas/notify.go       # 推送渠道
 internal/qas/worker.go       # 运行互斥、超时、SSE
+internal/qas/quark.go        # 夸克 API
 app/templates/               # Vue 3.5 + Bootstrap 5.3 页面
 app/static/                  # 前端静态资源
 ```
@@ -48,7 +51,25 @@ go test ./...
 1. `golang:1.27-alpine` 编译带 `BUILD_SHA`/`BUILD_TAG` 的静态二进制；
 2. `alpine:3.22` 只放入二进制、页面、配置模板、`ca-certificates`、`tzdata` 和 `su-exec`。
 
-镜像入口是 `docker-entrypoint.sh`：root 启动时修正 `/app/config` 权限并降权为 `qas`（UID 1000/GID 1001），再执行 `/usr/local/bin/quark-auto-save`。多架构发布由 `.github/workflows/docker-publish.yml` 负责，目标为 `linux/amd64`、`linux/arm64` 和 `linux/arm/v7`。
+容器内路径：
+
+| 变量 | 值 |
+|---|---|
+| `CONFIG_PATH` | `/app/config/quark_config.json` |
+| `CONFIG_TEMPLATE_PATH` | `/app/quark_config.json` |
+| `STATIC_DIR` | `/app/app/static` |
+| `TEMPLATE_DIR` | `/app/app/templates` |
+| 二进制 | `/usr/local/bin/quark-auto-save` |
+| 用户 | `qas` UID 1000 / GID 1001 |
+
+入口 `docker-entrypoint.sh`：root 启动时修正 `/app/config` 权限并降权为 `qas`，再执行二进制。不要用 `--user` 覆盖。
+
+```shell
+docker compose up -d --build
+docker build -t quark-auto-save .
+```
+
+多架构发布由 `.github/workflows/docker-publish.yml` 负责：`linux/amd64`、`linux/arm64`、`linux/arm/v7`。CI 只跑 `gofmt`、`go test`、`go vet`。
 
 ## 兼容性和安全
 

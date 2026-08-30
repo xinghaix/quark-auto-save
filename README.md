@@ -78,7 +78,7 @@ Docker 部署提供 WebUI 进行管理配置。生产环境不要使用默认密
 
 ```shell
 # 5005:5005 中前一个端口可改，后一个端口固定
-# :latest 可替换为 :v0.8.8 固定版本
+# 固定版本用 :vX.Y.Z；未发版前请用下面的 compose --build
 
 docker run -d \
   --name quark-auto-save \
@@ -94,10 +94,10 @@ docker run -d \
 
 镜像启动时会先为 `/app/config` 和 `/media` 修正 bind mount 的目录权限，随后立即降权为容器内的 `qas`（UID 1000、GID 1001）运行 Go 服务。不要再通过 `--user` 覆盖容器用户，否则挂载目录可能无法写入。
 
-仓库内提供了可直接使用的 `docker-compose.yml`：
+仓库内 `docker-compose.yml` 会用当前 Dockerfile 构建纯 Alpine 镜像（Go 静态二进制，无 Python）：
 
 ```shell
-docker compose up -d
+docker compose up -d --build
 ```
 
 管理地址：http://yourhost:5005
@@ -155,10 +155,10 @@ mcp_servers:
 | `WEBUI_PASSWORD`      | `admin123` | 仅为兼容默认值，生产部署必须覆盖            |
 | `HOST`                | `0.0.0.0`  | 监听地址                                  |
 | `PORT`                | `5005`     | 管理后台端口                              |
-| `CONFIG_PATH`         | `./config/quark_config.json` | 配置文件路径                 |
-| `CONFIG_TEMPLATE_PATH`| `./quark_config.json` | 缺省配置模板路径                    |
-| `STATIC_DIR`          | `./app/static` | 前端静态资源路径                       |
-| `TEMPLATE_DIR`        | `./app/templates` | HTML 模板路径                        |
+| `CONFIG_PATH`         | `./config/quark_config.json` | 配置文件。镜像内为 `/app/config/quark_config.json` |
+| `CONFIG_TEMPLATE_PATH`| `./quark_config.json` | 缺省模板。镜像内为 `/app/quark_config.json` |
+| `STATIC_DIR`          | `./app/static` | 前端静态资源。镜像内为 `/app/app/static` |
+| `TEMPLATE_DIR`        | `./app/templates` | HTML 模板。镜像内为 `/app/app/templates` |
 | `PLUGIN_FLAGS`        |            | 插件标志，如 `-emby,-aria2` 禁用某些插件  |
 | `TASK_TIMEOUT`        | `1800`     | 任务执行超时时间（秒），超时则任务结束    |
 | `MCP_ALLOWED_ORIGINS` | 空         | MCP 浏览器跨域允许的完整 Origin，逗号分隔  |
@@ -179,7 +179,7 @@ git push origin vX.Y.Z
 
 ### 本地构建与测试
 
-需要 Go 1.27：
+需要 Go 1.27，或 Docker：
 
 ```shell
 go version
@@ -187,9 +187,11 @@ mkdir -p bin
 go build -trimpath -o bin/quark-auto-save ./cmd/quark-auto-save
 go test ./...
 ./bin/quark-auto-save
+
+docker build -t quark-auto-save .
 ```
 
-本地只需 Go 1.27。Docker 镜像是静态二进制 + Alpine。正则使用 Python 兼容方言（含 lookaround / 反引用）。详细边界见 [Go 后端架构](docs/backend-go.md)。
+镜像内容和运行边界见 [Go 后端架构](docs/backend-go.md)。正则使用 Python 兼容方言（lookaround / 反引用）。
 
 <details open>
 <summary>WebUI 预览</summary>
@@ -212,8 +214,6 @@ go test ./...
 | `^(\d+)\.mp4`                          | `S02E\1.mp4`            | 01.mp4 → S02E01.mp4<br>02.mp4 → S02E02.mp4                             |
 | `$TV`                                  |                         | [魔法匹配](#魔法匹配)剧集文件                                          |
 | `^(\d+)\.mp4`                          | `{TASKNAME}.S02E\1.mp4` | 01.mp4 → 任务名.S02E01.mp4                                             |
-
-正则匹配示例见本节；任务由 Go 引擎处理，正则保持 Python 兼容方言。
 
 > [!TIP]
 >

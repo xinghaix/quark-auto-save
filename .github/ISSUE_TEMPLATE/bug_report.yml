@@ -38,14 +38,13 @@ body:
       label: Operating environment
       description: 运行环境
       options:
-        - Docker (Go 1.27 backend)
+        - Docker (Alpine / Go 1.27)
         - Go 1.27 binary
-        - Python compatibility worker
     validations:
       required: true
   - type: input
     id: version
     attributes:
       label: Environment version
-      description: 运行环境（Go 1.27、Docker、Python compatibility worker）的版本
+      description: 运行环境（Go 1.27 或 Docker 镜像标签）的版本
       placeholder: ex. v2.17.1

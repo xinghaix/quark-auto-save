@@ -2,6 +2,7 @@ name: quark-auto-save
 
 services:
   quark-auto-save:
+    build: .
     image: ghcr.io/xinghaix/quark-auto-save:latest
     container_name: quark-auto-save
     ports:
@@ -11,7 +12,6 @@ services:
       WEBUI_USERNAME: "${WEBUI_USERNAME:-admin}"
       WEBUI_PASSWORD: "${WEBUI_PASSWORD:?set WEBUI_PASSWORD before starting}"
       TZ: "${TZ:-Asia/Shanghai}"
-      # Optional: disable selected plugins.
       # PLUGIN_FLAGS: "-emby,-aria2"
     volumes:
       - ./config:/app/config

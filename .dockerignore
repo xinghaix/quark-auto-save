@@ -1,13 +1,11 @@
 .git
 .github
-__pycache__
-*.py[cod]
-*.log
 .env
 .env.*
+*.log
 /config
 /media
-tests
+/bin
 docs
 skills
 img

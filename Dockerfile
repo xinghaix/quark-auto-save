@@ -28,7 +28,13 @@ FROM alpine:3.22 AS runtime
 RUN apk add --no-cache su-exec ca-certificates tzdata
 
 WORKDIR /app
-ENV TZ=Asia/Shanghai
+ENV TZ=Asia/Shanghai \
+    HOST=0.0.0.0 \
+    PORT=5005 \
+    CONFIG_PATH=/app/config/quark_config.json \
+    CONFIG_TEMPLATE_PATH=/app/quark_config.json \
+    STATIC_DIR=/app/app/static \
+    TEMPLATE_DIR=/app/app/templates
 
 COPY --from=builder /out/quark-auto-save /usr/local/bin/quark-auto-save
 COPY app/static /app/app/static
@@ -43,6 +49,6 @@ RUN addgroup -S -g 1001 qas \
 
 EXPOSE 5005
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -q -O /dev/null http://127.0.0.1:5005/login || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1:${PORT:-5005}/login || exit 1
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
