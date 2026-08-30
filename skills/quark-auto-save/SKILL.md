@@ -1,6 +1,6 @@
 ---
 name: quark-auto-save
-description: Manage quark-auto-save tasks via CLI or MCP. (QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接, pan.quark.cn)
+description: Manage quark-auto-save tasks via curl or MCP. (QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接, pan.quark.cn)
 metadata:
   openclaw:
     emoji: "💾"
@@ -9,220 +9,115 @@ metadata:
       env:
         - QAS_BASE_URL
         - QAS_TOKEN
-      anyBins:
+      bins:
         - curl
-        - python3
     primaryEnv: QAS_TOKEN
 ---
 
 # quark-auto-save
 
-Manage quark-auto-save tasks via CLI or MCP.
+Manage quark-auto-save via HTTP (`?token=$QAS_TOKEN`) or MCP. Server is Go; there is no Python client.
 
-服务端入口是 Go 1.27 二进制。`qas_client.py` 只是可选的 HTTP 客户端，不是服务端。
+When the user sends `https://pan.quark.cn/s/***`, get share detail, then add or run a task.
 
-QAS, 夸克自动转存, 夸克转存, 夸克订阅, 管理任务, 运行任务, 修复失效链接
+## Env
 
-When user send message like `https://pan.quark.cn/s/***`, get detail, add a QAS task.
+- `QAS_BASE_URL` e.g. `http://192.168.1.x:5005`
+- `QAS_TOKEN` WebUI/API token
 
-## ⚠️ Prerequisites
+Set in skill env (`openclaw.json` → `skills.entries.quark-auto-save.env`). Restart gateway after editing.
 
-**Env:**
-- `QAS_BASE_URL` -  User provided, e.g., http://192.168.1.x:5005
-- `QAS_TOKEN` - User provided
+## MCP
 
-> Set in the skill's env config (e.g., `openclaw.json` → `skills.entries.quark-auto-save.env.QAS_BASE_URL`). Restart gateway after editing.
+Enable in WebUI「系统配置 → MCP 服务」:
 
-## MCP（远程 Agent）
+- HTTP: `${QAS_BASE_URL}/mcp`
+- Auth: `Authorization: Bearer <MCP_API_KEY>` or `X-API-Key`
+- SSE: `${QAS_BASE_URL}/mcp/sse` → `/mcp/messages?sessionId=...`
+- Write/run/delete permissions default off
 
-当前 Fork 已提供与 WebUI 共端口的 MCP 服务。先在 WebUI「系统配置 → MCP 服务」启用并设置 API key：
+stdio: `/usr/local/bin/quark-auto-save --mcp-stdio` with `QAS_MCP_API_KEY`.
 
-- HTTP endpoint: `${QAS_BASE_URL}/mcp`
-- 认证：`Authorization: Bearer $MCP_API_KEY` 或 `X-API-Key: $MCP_API_KEY`
-- 旧版 SSE：`${QAS_BASE_URL}/mcp/sse`，消息发送到 `/mcp/messages?sessionId=...`
-- 删除、重命名、修改和手动运行等权限默认关闭，需在设置中心显式开启
-
-`qas_client.py` 是 Python 客户端，仍使用传统 QAS token 接口；需要 MCP 的客户端应使用上面的 endpoint 和 API key。MCP API key 只以哈希形式持久化。
-
-Go 服务端的容器入口为 `/usr/local/bin/quark-auto-save`；stdio 使用 `--mcp-stdio`，HTTP 使用 `PORT`（默认 `5005`）。
-
-## First Configuration: Analyze User Habits
-
-After the user sets the token, the following analysis must be performed and recorded in TOOLS.md:
-
-1. **Get Current Configuration**:
-   ```bash
-   python3 {baseDir}/scripts/qas_client.py get-config
-   ```
-
-2. **Analyze Saving Habits**:
-   - Extract `savepath` directory patterns from existing tasks (e.g., `/video/tv/`, `/video/anime/`, `/video/movie/`)
-   - For `pattern` + `replace`: deduce the **final renamed filename** format by applying the regex to a sample source file (e.g., `01.mp4` → `Black Mirror.S01E01.mp4`). Record the result pattern, not the raw regex.
-   - Note which `magic_regex` key the user prefers (e.g. `$TV_MAGIC`)
-
-3. **Record to TOOLS.md**:
-   The following is just an example, not specific values, everything is analyzed based on user configuration.
-   ```markdown
-   ### quark-auto-save habits
-   #### TV Series
-      - Directory: `/video/tv/{name}`
-      - naming preferences: `$TV_MAGIC `(e.g., {TASKNAME}.{SXX}E{E}.{EXT})
-   #### Anime
-      - Directory: `/video/anime/{name}`
-      - naming preferences: `Rick and Morty.S01E01.mp4`
-   #### Movie
-      - Directory: `/video/movie/{name} {year}`
-      - naming preferences: `{TASKNAME}.mp4`
-   -
-   ...
-   ```
-
-## Client script
-
-The existing Python client script calls the Go backend API; use `{baseDir}/scripts/qas_client.py` for all operations:
+## HTTP helpers
 
 ```bash
-python3 {baseDir}/scripts/qas_client.py get-config                                    # Get all config & tasks
-python3 {baseDir}/scripts/qas_client.py search "query" [-d]                           # Search resources
-python3 {baseDir}/scripts/qas_client.py get-share "<shareurl>" [-a]                   # Get share detail (-a for all files)
-python3 {baseDir}/scripts/qas_client.py check-path "/path"                            # Check savepath
-python3 {baseDir}/scripts/qas_client.py delete-file "/path/to/file"                   # Delete cloud file
-python3 {baseDir}/scripts/qas_client.py rename-file "/path/to/file" "new_name"        # Rename cloud file
-python3 {baseDir}/scripts/qas_client.py add-task '{"taskname": "Name", ...}'          # Add task
-python3 {baseDir}/scripts/qas_client.py run-task [taskname|json]                      # Run task(s)
-python3 {baseDir}/scripts/qas_client.py update-task "TaskName" '{"savepath": "/new"}' # Update task
-python3 {baseDir}/scripts/qas_client.py delete-task "TaskName"                        # Delete task
-python3 {baseDir}/scripts/qas_client.py update-config '{"key": "value"}'              # Update config
+qas_get() { curl -sS -G "$QAS_BASE_URL$1" --data-urlencode "token=$QAS_TOKEN" "${@:2}"; }
+qas_post() { curl -sS -X POST -H 'Content-Type: application/json' "$QAS_BASE_URL$1?token=$QAS_TOKEN" -d "$2"; }
 ```
 
-## Task Schema
+```bash
+qas_get /data
+qas_get /task_suggestions --data-urlencode "q=query" --data-urlencode "d=1"
+qas_post /get_share_detail '{"shareurl":"https://pan.quark.cn/s/xxx"}'
+qas_get /get_savepath_detail --data-urlencode "path=/video/tv/Name"
+qas_post /delete_file '{"path":"/path/to/file"}'
+qas_post /rename_file '{"path":"/path/to/file","file_name":"new_name"}'
+qas_post /api/add_task '{"taskname":"Name","shareurl":"https://pan.quark.cn/s/xxx","savepath":"/video/tv/Name","pattern":"$TV"}'
+qas_post /run_script_now '{}'
+qas_post /run_script_now '{"tasklist":[{"taskname":"Name",...}]}'
+qas_post /update '{"crontab":"0 9 * * *"}'
+```
+
+Update/delete a saved task: GET `/data`, change `tasklist`, POST `/update` with `{"tasklist":[...]}`. Clear `shareurl_ban` when replacing a dead link.
+
+## First configuration
+
+After token is set, GET `/data`, extract savepath/pattern/replace habits, write them to TOOLS.md.
+
+```markdown
+### quark-auto-save habits
+#### TV Series
+   - Directory: `/video/tv/{name}`
+   - naming preferences: `{TASKNAME}.{SXX}E{E}.{EXT}`
+```
+
+## Task schema
+
+Required: `taskname`, `shareurl`, `savepath`. Optional: `pattern`, `replace`, `update_subdir`, `ignore_extension`, `runweek`, `addition`.
 
 ```json
 {
   "taskname": "MediaName",
   "shareurl": "https://pan.quark.cn/s/xxx#/list/share/fid",
   "savepath": "/video/tv/MediaName",
-  "pattern": "$TV_MAGIC",
+  "pattern": "$TV",
   "replace": "",
-  "update_subdir": "",
-  "ignore_extension": false,
   "runweek": [1,2,3,4,5,6,7]
 }
 ```
 
-**Required Fields:** `taskname`, `shareurl`, `savepath`
+Share URL: `https://pan.quark.cn/s/{id}` or with `#/list/share/{fid}`. Prefer video (mp4/mkv) and higher resolution.
 
-**Optional Fields:** `pattern`, `replace`, `update_subdir`, `ignore_extension`, `runweek`, `addition`
-
-> `add-task` auto-detects zip/rar/7z files and enables `auto_unarchive` plugin automatically. No manual `addition` config needed for this.
-
-## Configuration Rules
-
-### `shareurl` Format
-- `https://pan.quark.cn/s/{abc123}`
-- `https://pan.quark.cn/s/{abc123}#/list/share/{fid}`
-
-### Subdirectory Priority
-1. Video files (mp4, mkv, avi)
-2. Resolution: 4K > 1080P > 720P
-
-> Archive files (zip, rar, 7z) are also supported — auto-unarchive is enabled automatically by `add-task` `run-task`.
-
-**Get subdir info:**
-```bash
-python3 {baseDir}/scripts/qas_client.py get-share "<shareurl>"
-```
-
-**Add task example:**
-```bash
-python3 {baseDir}/scripts/qas_client.py add-task '{"taskname": "Black Mirror", "shareurl": "https://pan.quark.cn/s/xxx", "savepath": "/video/tv/Black Mirror", "pattern": "$TV_MAGIC"}'
-```
-
-## `pattern` & `replace`
+### pattern / replace
 
 | Pattern | Replace | Result |
 |---|---|---|
-| `.*` | | Save all files |
-| `\.(mp4\|mkv)$` | | Save video files only |
+| `.*` | | Save all |
+| `\.(mp4\|mkv)$` | | Videos only |
 | `^(\d+)\.mp4` | `S02E\1.mp4` | 01.mp4 → S02E01.mp4 |
-| `$TV_MAGIC` | | Use custom magic regex |
+| `$TV` | | Magic TV regex |
 
-### `replace` Magic Variables
-
-| Variable | Description |
-|---|---|
-| `{TASKNAME}` | Task name |
-| `{II}` | Index number (01, 02...) |
-| `{EXT}` | File extension |
-| `{SXX}` | Season (S01, S02...) |
-| `{E}` | Episode number |
-| `{DATE}` | Date (YYYYMMDD) |
+Magic vars: `{TASKNAME}` `{II}` `{EXT}` `{SXX}` `{E}` `{DATE}`.
 
 ## Workflows
 
-### Add New Task
-1. **Search**: `python3 {baseDir}/scripts/qas_client.py search "MediaName" -d`
-2. **Verify & Get Details**: `python3 {baseDir}/scripts/qas_client.py get-share "<shareurl>"`
-   - Check if `shareurl` is valid (not banned)
-   - Check file list for video files and select the subdir
-3. **Analyze `pattern` & `replace`**: Ensure the **final renamed filename** matches the naming preferences in TOOLS.md.
-   - Source already matches → `"pattern": ".*"`, `replace: ""` (save as-is)
-   - Needs renaming → design `pattern` to capture groups, `replace` with magic variables. E.g., source `01.mp4`, TOOLS.md says `Black Mirror.S01E01.mp4` → `"pattern": "^(\\d+)\\.mp4$", "replace": "{TASKNAME}.S01E\\1.{EXT}"`
-4. **Execute**:
-   - **One-time** (completed series, taskname contains `X集全`, `全X集`, `完结`, `全集`, single movie) → `run-task`
-   - **Subscription** (ongoing series that gets new episodes) → `add-task`
-   ```bash
-   # One-time (completed)
-   python3 {baseDir}/scripts/qas_client.py run-task '{"taskname": "MediaName", "shareurl": "...", "savepath": "...", "pattern": "...", "replace": "..."}'
-   # Subscription (ongoing)
-   python3 {baseDir}/scripts/qas_client.py add-task '{"taskname": "MediaName", "shareurl": "...", "savepath": "...", "pattern": "...", "replace": "..."}'
-   ```
-   - `savepath` and (`pattern`+`replace`) MUST follow the user's existing habits recorded in TOOLS.md
-   - **After add-task**: trigger `run-task "TaskName"` immediately to execute the first save.
+### Add
 
-### Check Invalid Tasks
-1. **Get tasks**: `python3 {baseDir}/scripts/qas_client.py get-config`
-2. **Identify invalid tasks**: tasks with `shareurl_ban` key in tasklist
-3. **Check existing files**: `python3 {baseDir}/scripts/qas_client.py check-path "<task_savepath>"` — record the naming format and the **latest episode number** (e.g., E24) of already-saved files
-4. **Find replacement**: `python3 {baseDir}/scripts/qas_client.py search "<taskname>" -d` to get candidate shareurls
-5. **Verify & select shareurl**:
-   - `python3 {baseDir}/scripts/qas_client.py get-share "<candidate_shareurl>" -a` — check file list
-   - **Step 1 — Pick by video format**: prefer the shareurl whose file extension matches the existing files (e.g., existing `.mkv` → pick `.mkv` source, existing `.mp4` → pick `.mp4` source)
-   - **Step 2 — Prefer newer episodes**: among candidates with matching format, pick the one whose episode range extends **beyond the latest episode** (e.g., existing up to E24 → pick shareurl containing E25+)
-   - **Step 3 — Ensure naming consistency**: analyze the source filenames against the existing file naming format. Update `pattern`/`replace` so the **final renamed result** matches the existing naming. If source already matches, keep `pattern`/`replace` unchanged.
-6. **Update task**: `python3 {baseDir}/scripts/qas_client.py update-task "TaskName" '{"shareurl": "<verified_url>", "shareurl_ban": "", "pattern": "...", "replace": "..."}'` — include `pattern`/`replace` if they were adjusted
-7. **Trigger run**: `python3 {baseDir}/scripts/qas_client.py run-task "TaskName"` — execute immediately after fixing the link.
+1. Search `/task_suggestions?q=Name&d=1`
+2. POST `/get_share_detail` — pick a valid share, prefer matching video ext
+3. Match TOOLS.md naming. Source already matches → `pattern: ".*"`. Else capture groups + magic vars.
+4. One-time (完结/全集/movie) → `/run_script_now` with `tasklist`. Subscription → `/api/add_task` then `/run_script_now` with that task.
 
-### Delete Task
-```bash
-python3 {baseDir}/scripts/qas_client.py delete-task "TaskName"
-```
+### Fix dead link
 
-### Update Task
-```bash
-# Partial update (only specified fields are changed)
-python3 {baseDir}/scripts/qas_client.py update-task "TaskName" '{"savepath": "/new/path"}'
-python3 {baseDir}/scripts/qas_client.py update-task "TaskName" '{"pattern": "$TV_MAGIC", "runweek": [1,3,5]}'
-```
+1. `/data` — tasks with `shareurl_ban`
+2. `/get_savepath_detail` — latest episode / naming
+3. Search + `/get_share_detail` — same ext, episodes beyond latest
+4. PATCH via `/update` (`shareurl`, clear `shareurl_ban`, maybe pattern/replace)
+5. `/run_script_now` that task
 
-### Update Config
-```bash
-# Update global config (allowed keys: cookie, crontab, push_config, tasklist, magic_regex, plugins, source)
-python3 {baseDir}/scripts/qas_client.py update-config '{"crontab": "0 9 * * *"}'
-```
+### Run
 
-### Run Tasks
-```bash
-python3 {baseDir}/scripts/qas_client.py run-task             # All tasks
-python3 {baseDir}/scripts/qas_client.py run-task "TaskName"  # Specific task
-python3 {baseDir}/scripts/qas_client.py run-task '{"taskname": "Test", ...}'  # Direct task
-```
-
-## Output Format
-
-All commands output text. First word indicates status:
-
-- **OK** — success, no data
-- **OK {json}** — success with data (JSON on same line)
-- **ERROR: message** — failure
-- **run-task**: `OK` on first line, followed by log lines
+- all: `qas_post /run_script_now '{}'`
+- one saved task: include it in `tasklist`
+- unsaved: `{"tasklist":[{...}]}`
